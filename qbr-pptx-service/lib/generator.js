@@ -23,7 +23,8 @@ const KPI_ICON_PATHS = {
   ordervalue: path.join(__dirname, "..", "assets", "kpi-icon-ordervalue.png"),
   aov: path.join(__dirname, "..", "assets", "kpi-icon-aov.png"),
   convrate: path.join(__dirname, "..", "assets", "kpi-icon-convrate.png"),
-  roi: path.join(__dirname, "..", "assets", "kpi-icon-roi.png")
+  roi: path.join(__dirname, "..", "assets", "kpi-icon-roi.png"),
+  commission: path.join(__dirname, "..", "assets", "kpi-icon-roi.png")
 };
 const HAS_KPI_ICON = Object.fromEntries(
   Object.entries(KPI_ICON_PATHS).map(([key, filePath]) => [key, fsSync.existsSync(filePath)])
@@ -74,9 +75,9 @@ const DEFAULT_THEME = {
   companyName: "Tradedoubler",
   logoText: "Tradedoubler",
   fonts: {
-    heading: "Instrument Sans",
-    body: "Instrument Sans",
-    mono: "Instrument Sans"
+    heading: "Aptos",
+    body: "Aptos",
+    mono: "Aptos"
   },
   colors: {
     ink: "#2F333B",
@@ -321,7 +322,7 @@ function cleanText(value, fallback = "") {
     .replace(/Â£/g, "\u00A3")
     .replace(/â‚¬/g, "\u20AC")
     .replace(/zÅ‚/g, "z\u0142");
-  const xmlSafe = repairedCurrency.replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F]/g, "");
+  const xmlSafe = repairedCurrency.replace(/[\u25B2\u25BC\u25B3\u25BD\u25B4\u25BE]/g, "");
   return xmlSafe.replace(/\s+\n/g, "\n").replace(/\n{3,}/g, "\n\n").trim();
 }
 
@@ -537,7 +538,7 @@ function normalizeHex(value, fallback) {
 }
 
 function normalizeTableKey(key) {
-  const compact = cleanInlineText(key).toLowerCase().replace(/[^a-z0-9]/g, "");
+  const compact = cleanInlineText(key).toLowerCase().replace(/[\u25B2\u25BC\u25B3\u25BD\u25B4\u25BE]/g, "");
   return TABLE_KEY_MAP[compact] || compact || "table";
 }
 
@@ -557,7 +558,7 @@ function parseNumber(value) {
   if (!text) return null;
   text = text.replace(/[\u00A3\u20AC$\u00A5]|z\u0142|kr/gi, "").replace(/\s+/g, "");
   const isPercent = text.endsWith("%");
-  text = text.replace(/%/g, "").replace(/[()]/g, "");
+  text = text.replace(/%/g, "").replace(/[\u25B2\u25BC\u25B3\u25BD\u25B4\u25BE]/g, "");
 
   const lastComma = text.lastIndexOf(",");
   const lastDot = text.lastIndexOf(".");
@@ -571,7 +572,7 @@ function parseNumber(value) {
     if (!(decimals >= 1 && decimals <= 4)) text = text.replace(/\./g, "");
   }
 
-  const numeric = Number(text.replace(/[^0-9.-]/g, ""));
+  const numeric = Number(text.replace(/[\u25B2\u25BC\u25B3\u25BD\u25B4\u25BE]/g, ""));
   if (!Number.isFinite(numeric)) return null;
   return isPercent ? numeric : numeric;
 }
@@ -582,7 +583,7 @@ function detectUnit(label, sample) {
   if (value.includes("%") || key.includes("rate") || key.includes("variance")) return "percent";
   if (/[\u00A3\u20AC$\u00A5]|z\u0142|kr/i.test(value) || key.includes("value") || key.includes("commission") || key.includes("cpa")) return "currency";
   if (key.includes("roi")) return "ratio";
-  if (/^\d+([,.]\d+)?$/.test(value.replace(/[+-]/g, ""))) return "number";
+  if (/^\d+([,.]\d+)?$/.test(value.replace(/[\u25B2\u25BC\u25B3\u25BD\u25B4\u25BE]/g, ""))) return "number";
   return "text";
 }
 
@@ -781,6 +782,11 @@ function normalizeStringList(input) {
   return [];
 }
 
+function normalizeThemeFont(fontName, fallback) {
+  const cleaned = cleanInlineText(fontName || fallback);
+  return /^instrument\s+sans$/i.test(cleaned) ? "Aptos" : cleaned;
+}
+
 function resolveTheme(themeName, overrides) {
   const colors = (overrides && overrides.colors) || {};
   const fonts = (overrides && overrides.fonts) || {};
@@ -791,9 +797,9 @@ function resolveTheme(themeName, overrides) {
     companyName: cleanInlineText((overrides && overrides.companyName) || DEFAULT_THEME.companyName),
     logoText: cleanInlineText((overrides && overrides.logoText) || (overrides && overrides.companyName) || DEFAULT_THEME.logoText),
     fonts: {
-      heading: cleanInlineText(fonts.heading || DEFAULT_THEME.fonts.heading),
-      body: cleanInlineText(fonts.body || DEFAULT_THEME.fonts.body),
-      mono: cleanInlineText(fonts.mono || DEFAULT_THEME.fonts.mono)
+      heading: normalizeThemeFont(fonts.heading, DEFAULT_THEME.fonts.heading),
+      body: normalizeThemeFont(fonts.body, DEFAULT_THEME.fonts.body),
+      mono: normalizeThemeFont(fonts.mono, DEFAULT_THEME.fonts.mono)
     },
     colors: {
       ink: normalizeHex(colors.ink, DEFAULT_THEME.colors.ink),
@@ -921,18 +927,28 @@ function trend(metric) {
   return "flat";
 }
 
+function cleanDeltaText(value) {
+  const text = cleanInlineText(value || "");
+  if (!text) return "";
+  return text
+    .replace(/[\u25B2\u25BC\u25B3\u25BD\u25B4\u25BE]/g, "")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
 function metricCard(metric) {
   if (!metric || !metric.current) return null;
   const comparison = metric.previous
     ? `${metric.current} vs ${metric.previous} PY`
     : `${metric.current}`;
-  const summary = metric.variance ? `${comparison} - ${metric.variance}` : comparison;
+  const varianceText = cleanDeltaText(metric.variance);
+  const summary = varianceText ? `${comparison} - ${varianceText}` : comparison;
   return {
     label: metric.label,
     value: metric.current,
     previous: metric.previous || "",
     summary,
-    delta: metric.variance,
+    delta: varianceText,
     trend: trend(metric)
   };
 }
@@ -1054,7 +1070,7 @@ function buildExecutiveSummaryText(input) {
   const selectedProgramCount = new Set(selectedProgramIds).size;
   const isMultiProgramScope = selectedProgramCount > 1;
 
-  const providedSummary = cleanInlineText(input.executiveSummaryText || "");
+  const providedSummary = cleanDeltaText(input.executiveSummaryText || "");
   if (providedSummary) {
     const providedLooksMultiProgram = /selected programs?|all programs?|combined|portfolio|across\s+\d+\s+programs?/i.test(providedSummary);
     if (!isMultiProgramScope || providedLooksMultiProgram) return providedSummary;
@@ -1078,8 +1094,8 @@ function buildExecutiveSummaryText(input) {
         return `The ${affiliateLabel} delivered mixed results in ${periodLabel}.`;
       })();
 
-  return cleanInlineText(
-    `${openingLine} While AOV grew ${aov.variance || "N/A"} to ${aov.current || "-"} and conversion rate improved ${conv.variance || "N/A"}, total sales declined ${sales.variance || "N/A"} YoY driven by a ${clicks.variance || "N/A"} reduction in click volume. Total order value ${movementVerb(ov)} ${ov.variance || "N/A"} to ${ov.current || "-"}. Full KPI breakdown follows on the next slides.`
+  return cleanDeltaText(
+    `${openingLine} While AOV grew ${cleanDeltaText(aov.variance) || "N/A"} to ${aov.current || "-"} and conversion rate improved ${cleanDeltaText(conv.variance) || "N/A"}, total sales declined ${cleanDeltaText(sales.variance) || "N/A"} YoY driven by a ${cleanDeltaText(clicks.variance) || "N/A"} reduction in click volume. Total order value ${movementVerb(ov)} ${cleanDeltaText(ov.variance) || "N/A"} to ${ov.current || "-"}. Full KPI breakdown follows on the next slides.`
   );
 }
 
@@ -1673,12 +1689,29 @@ function compactLabel(value, maxLen = 36) {
   return `${text.slice(0, maxLen - 1).trimEnd()}\u2026`;
 }
 
-function buildDirectionalMoversTable(table, title, columns, upCount = 5, downCount = 5) {
+function formatSignedPercent(value, locale = "en-GB", decimals = 1) {
+  if (value === null || value === undefined || Number.isNaN(Number(value))) return "N/A";
+  const n = Number(value);
+  const abs = Math.abs(n).toLocaleString(locale || "en-GB", {
+    minimumFractionDigits: decimals,
+    maximumFractionDigits: decimals
+  });
+  if (n > 0) return `+${abs}%`;
+  if (n < 0) return `-${abs}%`;
+  return `${abs}%`;
+}
+
+function buildDirectionalMoversTable(table, title, columns, upCount = 5, downCount = 5, locale = "en-GB") {
   const fallback = {
     title,
     columns,
     colW: [3.5, 1.8, 2.1, 2.1, 1.5],
-    rows: [["Top 5 Up", "", "", "", ""], ...Array.from({ length: 1 }, () => ["-", "-", "-", "-", "-"]), ["Top 5 Down", "", "", "", ""], ...Array.from({ length: 1 }, () => ["-", "-", "-", "-", "-"])]
+    rows: [
+      ["Top 5 Up (by YoY %)", "", "", "", ""],
+      ["No qualifying publishers", "", "", "", ""],
+      ["Top 5 Down (by YoY %)", "", "", "", ""],
+      ["No qualifying publishers", "", "", "", ""]
+    ]
   };
   if (!table || !Array.isArray(table.rows) || !table.rows.length) return fallback;
 
@@ -1689,42 +1722,75 @@ function buildDirectionalMoversTable(table, title, columns, upCount = 5, downCou
     const yoyChange = readTableCell(row, ["YoY Change", "Sales YoY Change", "OV YoY Change", "Clicks YoY Change"]);
     const yoyPct = readTableCell(row, ["YoY %", "Sales YoY %", "OV YoY %", "Clicks YoY %"]);
     const direction = readTableCell(row, ["Direction"]).toLowerCase();
-    const numericChange = parseNumber(yoyChange) ?? parseNumber(yoyPct) ?? 0;
+    const numericChange = parseNumber(yoyChange) ?? 0;
+    const numericPct = parseNumber(yoyPct);
+    const hasPct = Number.isFinite(numericPct);
+    const rawPctText = cleanInlineText(yoyPct || "");
+    const pctDisplayFallback = /^(n\/a|na|null|undefined|-)?$/i.test(rawPctText) ? "-" : rawPctText;
 
-    const derivedDirection = direction
-      ? direction
-      : numericChange < 0
+    const normalizedDirection = /(up|increase|increased|positive|growth|grow)/.test(direction)
+      ? "up"
+      : /(down|decrease|decreased|negative|decline|loss)/.test(direction)
         ? "down"
-        : numericChange > 0
+        : "";
+
+    const directionalValue = hasPct ? numericPct : numericChange;
+    const derivedDirection = normalizedDirection
+      ? normalizedDirection
+      : directionalValue < 0
+        ? "down"
+        : directionalValue > 0
           ? "up"
           : "";
 
-    return { publisher, siteId, current, yoyChange, yoyPct, direction: derivedDirection, numericChange };
+    return {
+      publisher,
+      siteId,
+      current,
+      yoyChange,
+      yoyPct: hasPct ? formatSignedPercent(numericPct, locale, 1) : pctDisplayFallback,
+      direction: derivedDirection,
+      numericChange,
+      numericPct,
+      hasPct
+    };
   });
+  const eligibleRows = rows.filter((row) =>
+    row.hasPct
+    && Number.isFinite(row.numericPct)
+    && Math.abs(row.numericPct) > 0
+    && cleanInlineText(row.publisher || "")
+  );
 
-  const up = rows
-    .filter((row) => row.direction === "up" || row.numericChange > 0)
-    .sort((a, b) => (b.numericChange || 0) - (a.numericChange || 0))
+  const up = eligibleRows
+    .filter((row) => row.numericPct > 0)
+    .sort((a, b) => {
+      if ((b.numericPct || 0) !== (a.numericPct || 0)) return (b.numericPct || 0) - (a.numericPct || 0);
+      return (b.numericChange || 0) - (a.numericChange || 0);
+    })
     .slice(0, upCount);
 
-  const down = rows
-    .filter((row) => row.direction === "down" || row.numericChange < 0)
-    .sort((a, b) => (a.numericChange || 0) - (b.numericChange || 0))
+  const down = eligibleRows
+    .filter((row) => row.numericPct < 0)
+    .sort((a, b) => {
+      if ((a.numericPct || 0) !== (b.numericPct || 0)) return (a.numericPct || 0) - (b.numericPct || 0);
+      return (a.numericChange || 0) - (b.numericChange || 0);
+    })
     .slice(0, downCount);
 
   const outputRows = [];
-  outputRows.push(["Top 5 Up", "", "", "", ""]);
+  outputRows.push([`Top ${upCount} Up (by YoY %)`, "", "", "", ""]);
   if (up.length) {
-    up.forEach((row) => outputRows.push([row.publisher || "-", row.siteId || "-", row.current || "-", row.yoyChange || "-", row.yoyPct || "-"]));
+    up.forEach((row) => outputRows.push([row.publisher || "", row.siteId || "", row.current || "", row.yoyChange || "", row.yoyPct || ""]));
   } else {
-    outputRows.push(["-", "-", "-", "-", "-"]);
+    outputRows.push(["No qualifying publishers", "", "", "", ""]);
   }
 
-  outputRows.push(["Top 5 Down", "", "", "", ""]);
+  outputRows.push([`Top ${downCount} Down (by YoY %)`, "", "", "", ""]);
   if (down.length) {
-    down.forEach((row) => outputRows.push([row.publisher || "-", row.siteId || "-", row.current || "-", row.yoyChange || "-", row.yoyPct || "-"]));
+    down.forEach((row) => outputRows.push([row.publisher || "", row.siteId || "", row.current || "", row.yoyChange || "", row.yoyPct || ""]));
   } else {
-    outputRows.push(["-", "-", "-", "-", "-"]);
+    outputRows.push(["No qualifying publishers", "", "", "", ""]);
   }
 
   return {
@@ -1763,7 +1829,7 @@ function metricSentence(label, metric, includeDelta = true) {
   if (!metric) return `${label}: data not available.`;
   if (!includeDelta) return `${label}: ${metric.current || "-"}.`;
   const dir = directionWord(metric.varianceValue);
-  const variance = metric.variance || "N/A";
+  const variance = cleanDeltaText(metric.variance) || "N/A";
   return `${label} ${dir} ${variance} (${metric.previous || "-"} to ${metric.current || "-"}).`;
 }
 
@@ -1796,13 +1862,16 @@ function buildKpiAnalysisBullets(input) {
       .replace(/\s*-\s*I(?=\s|$)/gi, "")
       .replace(/\s+/g, " ")
       .trim();
-  const aiCandidatesRaw = (input.programSections || [])
+  const sectionLooksLikeKpiAnalysis = (section) =>
+    /kpi snapshot|kpi highlights|business implications|confirmed changes|program performance|analysis|insights|signals|implication/i
+      .test(cleanInlineText(section?.title || "").toLowerCase());
+
+  const aiCandidatesRaw = [...(input.programSections || []), ...(input.publisherSections || [])]
     .filter((section) =>
-      /kpi snapshot|kpi highlights|business implications|confirmed changes|program performance|kpi/i
-        .test(cleanInlineText(section.title).toLowerCase())
+      sectionLooksLikeKpiAnalysis(section)
     )
     .flatMap((section) => [...(section.bullets || []), ...(section.paragraphs || [])])
-    .map((line) => cleanInlineText(line))
+    .map((line) => cleanDeltaText(cleanInlineText(line)))
     .filter((line) => line.length >= 14 && line.length <= 360)
     .filter((line) => !/\bsite\s*id\b/i.test(line))
     .filter((line) => !/^\s*program\s*id\s*\d+/i.test(line))
@@ -1833,7 +1902,7 @@ function buildKpiAnalysisBullets(input) {
   }
 
   const looksLikeRawKpiSnapshot = (line) =>
-    /^(sales|order value|clicks|conv rate|conversion rate|aov|publ commission|publisher commission|total commission|cpa|roi)\s*:/i
+    /^(sales|order value|clicks|conv rate|conversion rate|aov|publ(?:isher)? commission(?:\s*\/\s*total commission)?|total commission|cpa|roi)\b.*:/i
       .test(cleanInlineText(line));
   const looksLikeProgramListing = (line) =>
     /^\s*program\s*id\s*\d+/i.test(cleanInlineText(line))
@@ -1843,14 +1912,10 @@ function buildKpiAnalysisBullets(input) {
   const preferredAi = aiCandidates
     .filter((line) => !looksLikeRawKpiSnapshot(line) && !looksLikeProgramListing(line))
     .map((line) => cleanInlineText(line))
+    .filter((line) => !/^driver not confirmed from available data\.?$/i.test(line))
+    .filter((line) => !/^detail not available from current extract\.?$/i.test(line))
     .filter(Boolean);
 
-  const moversSales = input.tables.moversSales;
-  const topUp = getTopDirection(moversSales, "Up");
-  const topDown = getTopDirection(moversSales, "Down");
-
-  const growthTop = input.tables.topGrowthPublishers?.rows?.[0] || null;
-  const declineTop = input.tables.topDecliningPublishers?.rows?.[0] || null;
   const declineRows = (input.tables.topDecliningPublishers?.rows || []).slice(0, 3);
   const declineList = declineRows
     .map((row) => `${cleanPublisherLabel(row.Publisher || "Publisher")} (${cleanInlineText(row["Sales YoY %"] || row["YoY Change"] || "N/A")})`)
@@ -1872,15 +1937,90 @@ function buildKpiAnalysisBullets(input) {
     `ROI Trend: ${metricSentence("ROI", roi)} For every unit of commission in the current period, programme return moved from ${roi?.previous || "-"} to ${roi?.current || "-"}, showing marginal improvement in spend efficiency.`
   ];
   const generated = bullets.map((line) => cleanInlineText(line)).filter(Boolean);
-  const merged = [];
-  const aiForUse = preferredAi.length >= 3 ? preferredAi : [];
-  // Keep rich, structured generated narrative first; then use AI lines as supplements.
-  [...generated, ...aiForUse].forEach((line) => {
-    const key = line.toLowerCase();
-    if (merged.some((existing) => existing.toLowerCase() === key)) return;
-    merged.push(line);
+
+  const topicTitleByKey = {
+    conversion: "Conversion Rate Improvement",
+    salesVolume: "Sales Volume Pressure",
+    aovValue: "AOV Growth Partially Offsetting Volume Decline",
+    cpa: "Rising CPA",
+    roi: "ROI Trend"
+  };
+  const topicOrder = ["conversion", "salesVolume", "aovValue", "cpa", "roi"];
+
+  const topicKeyFromText = (value) => {
+    const text = cleanInlineText(value || "").toLowerCase();
+    if (!text) return "";
+    if (/conversion|conv rate/.test(text)) return "conversion";
+    if (/sales volume pressure|sales|click volume|clicks|traffic/.test(text)) return "salesVolume";
+    if (/aov|average order value|order value/.test(text)) return "aovValue";
+    if (/rising cpa|cost per acquisition|\bcpa\b|commission/.test(text)) return "cpa";
+    if (/roi trend|return on investment|\broi\b/.test(text)) return "roi";
+    return "";
+  };
+
+  const generatedByTopic = {};
+  generated.forEach((line) => {
+    const idx = line.indexOf(":");
+    if (idx < 0) return;
+    const key = topicKeyFromText(line.slice(0, idx));
+    const detail = cleanInlineText(line.slice(idx + 1));
+    if (key && detail && !generatedByTopic[key]) {
+      generatedByTopic[key] = detail;
+    }
   });
-  return merged.slice(0, 5).map((line) => cleanInlineText(line)).filter(Boolean);
+
+  const aiByTopic = {};
+  const aiExtras = [];
+  preferredAi.slice(0, 12).forEach((line) => {
+    const text = cleanInlineText(line);
+    if (!text) return;
+    const idx = text.indexOf(":");
+    const hasTitle = idx > 6 && idx < 90;
+    const title = hasTitle ? text.slice(0, idx).trim() : text;
+    const detail = hasTitle ? text.slice(idx + 1).trim() : text;
+    const key = topicKeyFromText(title || text);
+    if (key) {
+      if (!aiByTopic[key] && detail) aiByTopic[key] = detail;
+      return;
+    }
+    aiExtras.push(text);
+  });
+
+  const output = [];
+  const seen = new Set();
+  const pushUnique = (line) => {
+    const cleaned = cleanInlineText(line);
+    if (!cleaned) return;
+    const fingerprint = cleaned.toLowerCase();
+    if (seen.has(fingerprint)) return;
+    seen.add(fingerprint);
+    output.push(cleaned);
+  };
+
+  topicOrder.forEach((topicKey) => {
+    const title = topicTitleByKey[topicKey] || "KPI Signal";
+    const aiDetail = cleanInlineText(aiByTopic[topicKey] || "");
+    const generatedDetail = cleanInlineText(generatedByTopic[topicKey] || "");
+
+    let aiDetailForTopic = aiDetail;
+    if (topicKey === "cpa") {
+      aiDetailForTopic = aiDetailForTopic
+        .replace(/;?\s*ROI[\s\S]*$/i, "")
+        .replace(/\s{2,}/g, " ")
+        .trim();
+    }
+
+    const detail = generatedDetail || aiDetailForTopic;
+    if (detail) pushUnique(`${title}: ${detail}`);
+  });
+
+  if (output.length < 5) {
+    aiExtras.forEach((line) => pushUnique(line));
+  }
+  if (output.length < 5) {
+    generated.forEach((line) => pushUnique(line));
+  }
+  return output.slice(0, 5);
 }
 
 function buildCostCallout(input) {
@@ -1968,7 +2108,7 @@ function buildDeckSpec(input, theme) {
     { key: "ordervalue", label: "Total Order Value", iconKey: "ordervalue", icon: "\u25A4" },
     { key: "aov", label: "Average Order Value (AOV)", iconKey: "aov", icon: "\u2197" },
     { key: "convrate", label: "Conversion Rate", iconKey: "convrate", icon: "\u26A1" },
-    { key: "roi", label: "ROI", iconKey: "roi", icon: "\u21BB" }
+    { key: "publcommission", label: "Publisher Commission", iconKey: "commission", icon: "\u00A3" }
   ];
   const topCards = executiveCardConfig
     .map((cfg) => {
@@ -2026,17 +2166,15 @@ function buildDeckSpec(input, theme) {
     id: "reporting-period",
     kind: "reporting-period",
     title: "Reporting Period",
-    subtitle: "Current and YoY comparison windows",
+    subtitle: "Selected period from the QBR request",
     headline: "",
     summary: "",
     bullets: [
-      `Current period: ${input.reportingPeriod}`,
-      `Comparison period: ${input.comparisonPeriod}`,
-      `Primary focus: ${input.qbrFocus}${input.qbrFocusDetail ? ` - ${input.qbrFocusDetail}` : ""}`
+      `${input.reportingPeriod}`
     ],
     kpis: [],
     tables: [],
-    callout: `All figures are reported in ${input.currencyCode} unless otherwise stated. YoY variance is calculated as current period vs comparison period.`
+    callout: ""
   });
 
   slides.push({
@@ -2133,7 +2271,7 @@ function buildDeckSpec(input, theme) {
         "Current Sales",
         "YoY Change",
         "YoY %"
-      ])
+      ], 5, 5, input.locale)
     ],
     callout: "Up = positive YoY movement; Down = negative YoY movement."
   });
@@ -2152,7 +2290,7 @@ function buildDeckSpec(input, theme) {
         "Current OV",
         "YoY Change",
         "YoY %"
-      ])
+      ], 5, 5, input.locale)
     ],
     callout: "Order value movers indicate where incremental revenue was won or lost YoY."
   });
@@ -2171,7 +2309,7 @@ function buildDeckSpec(input, theme) {
         "Current Clicks",
         "YoY Change",
         "YoY %"
-      ])
+      ], 5, 5, input.locale)
     ],
     callout: "Traffic movement helps explain volume and conversion shifts across the publisher mix."
   });
@@ -2462,7 +2600,7 @@ function isTableValueNumeric(value) {
   const text = cleanInlineText(value || "");
   if (!text || text === "-" || /^n\/a$/i.test(text)) return false;
   const normalized = text
-    .replace(/[£$€,\s]/g, "")
+    .replace(/[\u25B2\u25BC\u25B3\u25BD\u25B4\u25BE]/g, "")
     .replace(/%$/, "")
     .replace(/^\+/, "");
   return /^-?\d+(\.\d+)?$/.test(normalized);
@@ -2898,97 +3036,38 @@ function renderSlide(slide, deck, spec, pageNumber) {
 
   if (spec.kind === "reporting-period") {
     const locale = deck.metadata.locale || "en-GB";
-    const currentPeriodReadable = formatPeriodForSlide(deck.metadata.reportingPeriod, locale);
-    const comparisonPeriodReadable = formatPeriodForSlide(deck.metadata.comparisonPeriod, locale);
-    const currentPeriodParsed = parseIsoPeriod(deck.metadata.reportingPeriod);
-    const asOfLabel = currentPeriodParsed ? formatLongDate(currentPeriodParsed.end, locale) : "N/A";
-    const currencySymbol = getCurrencySymbol(deck.metadata.currencyCode);
-    const currencyLabel = currencySymbol
-      ? `${deck.metadata.currencyCode} (${currencySymbol})`
-      : deck.metadata.currencyCode;
-    const allFiguresStatement = uiLabel(
-      deck,
-      "allFiguresStatement",
-      "All figures are reported in {currency} unless otherwise stated. YoY variance is calculated as Current Period vs Comparison Period."
-    ).replace("{currency}", currencyLabel);
+    const selectedPeriod = cleanInlineText(spec?.bullets?.[0] || deck.metadata.reportingPeriod || "Not specified");
+    const selectedPeriodReadable = formatPeriodForSlide(selectedPeriod, locale);
 
-    slide.addText(uiLabel(deck, "currentPeriod", "Current Period"), {
-      x: 0.7,
-      y: 2.0,
-      w: 5.6,
-      h: 0.4,
-      fontFace: deck.theme.fonts.heading,
-      fontSize: 21,
-      color: toColor(deck.theme.colors.ink),
-      margin: 0
-    });
-    slide.addText(uiLabel(deck, "comparisonPeriodYoy", "Comparison Period (YoY)"), {
-      x: 6.9,
-      y: 2.0,
-      w: 5.6,
-      h: 0.4,
-      fontFace: deck.theme.fonts.heading,
-      fontSize: 21,
-      color: toColor(deck.theme.colors.ink),
-      margin: 0
-    });
-    slide.addText(`${uiLabel(deck, "reportingPeriodPrefix", "Reporting Period")}: ${currentPeriodReadable}`, {
-      x: 0.7,
-      y: 2.55,
-      w: 5.8,
-      h: 0.3,
-      fontFace: deck.theme.fonts.body,
-      fontSize: 10.8,
-      color: toColor(deck.theme.colors.muted),
-      margin: 0
-    });
-    slide.addText(`${uiLabel(deck, "dataAsOfPrefix", "Data as of")}: ${asOfLabel}`, {
-      x: 0.7,
-      y: 2.86,
-      w: 5.8,
-      h: 0.3,
-      fontFace: deck.theme.fonts.body,
-      fontSize: 10.8,
-      color: toColor(deck.theme.colors.muted),
-      margin: 0
-    });
-    slide.addText(`${uiLabel(deck, "comparisonPeriodPrefix", "Comparison Period")}: ${comparisonPeriodReadable}`, {
-      x: 6.9,
-      y: 2.55,
-      w: 5.8,
-      h: 0.3,
-      fontFace: deck.theme.fonts.body,
-      fontSize: 10.8,
-      color: toColor(deck.theme.colors.muted),
-      margin: 0
-    });
-    slide.addText(uiLabel(deck, "basisYoy", "Basis: Year-over-Year (YoY)"), {
-      x: 6.9,
-      y: 2.86,
-      w: 5.8,
-      h: 0.3,
-      fontFace: deck.theme.fonts.body,
-      fontSize: 10.8,
-      color: toColor(deck.theme.colors.muted),
-      margin: 0
-    });
     slide.addShape("roundRect", {
       x: 0.7,
-      y: 3.55,
+      y: 2.25,
       w: 11.95,
-      h: 1.05,
+      h: 2.1,
       radius: 0.05,
       line: { color: toColor(deck.theme.colors.highlight), pt: 0.5 },
       fill: { color: toColor(deck.theme.colors.highlight), transparency: 10 }
     });
-    slide.addText(`\u25AD  ${allFiguresStatement}`, {
+    slide.addText(uiLabel(deck, "reportingPeriodPrefix", "Reporting Period"), {
       x: 0.95,
-      y: 3.9,
+      y: 2.75,
       w: 11.35,
-      h: 0.48,
-      fontFace: deck.theme.fonts.body,
-      fontSize: 11.4,
+      h: 0.3,
+      fontFace: deck.theme.fonts.heading,
+      fontSize: 18,
       color: toColor(deck.theme.colors.ink),
+      margin: 0
+    });
+    slide.addText(selectedPeriodReadable, {
+      x: 0.95,
+      y: 3.2,
+      w: 11.35,
+      h: 0.58,
+      fontFace: deck.theme.fonts.body,
+      fontSize: 22,
+      color: toColor(deck.theme.colors.ink),
+      bold: true,
+      align: "center",
       margin: 0
     });
     return;
@@ -3502,7 +3581,7 @@ async function renderDeck(deck) {
 function safeName(value) {
   return String(value || "qbr_deck")
     .trim()
-    .replace(/[^a-zA-Z0-9-_ ]/g, "")
+    .replace(/[\u25B2\u25BC\u25B3\u25BD\u25B4\u25BE]/g, "")
     .replace(/\s+/g, "_")
     .replace(/_+/g, "_")
     .toLowerCase() || "qbr_deck";
