@@ -57,16 +57,23 @@ const TABLE_KEY_MAP = {
   brandnewtop: "brandNewPublishers",
   newemergingtop: "newEmergingPublishers",
   stoppedactivitytop: "stoppedActivity",
-  newpublisherprospects: "newPublisherProspects"
+  newpublisherprospects: "newPublisherProspects",
+  competitoranalysistable: "competitorAnalysisTable",
+  competitorgroupsummary: "competitorAnalysisTable",
+  competitorweeklypubcommchart: "competitorWeeklyPubCommChart",
+  weeklypubcommchart: "competitorWeeklyPubCommChart"
 };
 
 const PROGRAM_BREAKDOWN_COLUMNS = [
   { label: "Program", aliases: ["Program", "Program Name", "ProgramName", "Name"] },
-  { label: "Program ID", aliases: ["Program ID", "ProgramId", "ProgramID", "ID"] },
-  { label: "Current OV", aliases: ["Current OV", "Current Order Value", "Order Value", "CurrentOrderValue", "CurrentOV"] },
-  { label: "OV YoY %", aliases: ["OV YoY %", "Order Value YoY %", "OV % YoY", "OVYoY%", "Ov YoY %"] },
-  { label: "Current Sales", aliases: ["Current Sales", "Sales", "CurrentSales"] },
-  { label: "Sales YoY %", aliases: ["Sales YoY %", "Current Sales YoY %", "Sales % YoY", "SalesYoY%"] }
+  { label: "Publisher Commission", aliases: ["Publisher Commission", "Current Publisher Commission", "Commission", "Current Commission"] },
+  { label: "Digital Wallet", aliases: ["Digital Wallet", "Digital Wallets", "DigitalWallet", "DigitalWallets"] },
+  { label: "Total Earnings", aliases: ["Total Earnings", "Total Earning", "TotalEarnings"] },
+  { label: "Conversions", aliases: ["Conversions", "Current Conversions", "Sales", "Current Sales", "CurrentSales"] },
+  { label: "Order Value", aliases: ["Order Value", "Total Order Value", "Current OV", "Current Order Value", "CurrentOrderValue", "CurrentOV"] },
+  { label: "Publisher Commission YoY %", aliases: ["Publisher Commission YoY %", "Commission YoY %", "Publisher Commission % YoY", "Commission % YoY"] },
+  { label: "Earnings YoY %", aliases: ["Earnings YoY %", "Total Earnings YoY %", "Total Earnings % YoY", "YoY %"] },
+  { label: "Conversions YoY %", aliases: ["Conversions YoY %", "Current Conversions YoY %", "Sales YoY %", "Current Sales YoY %", "Sales % YoY", "SalesYoY%"] }
 ];
 
 const DEFAULT_THEME = {
@@ -124,7 +131,7 @@ const LANGUAGE_TRANSLATION_TARGET_MAP = {
 const DEFAULT_UI_LABELS = {
   qbrReport: "QBR Report",
   anyQuestions: "Any Questions?",
-  thankYouSubtitleTemplate: "TD Affiliate Program - {period} Quarterly Business Review",
+  thankYouSubtitleTemplate: "TD Publisher Performance Review - {period}",
   currentPeriod: "Current Period",
   comparisonPeriodYoy: "Comparison Period (YoY)",
   basisYoy: "Basis: Year-over-Year (YoY)",
@@ -151,7 +158,7 @@ const UI_LABELS_BY_LANGUAGE = {
   FR: {
     qbrReport: "Rapport QBR",
     anyQuestions: "Des questions ?",
-    thankYouSubtitleTemplate: "Programme d'affiliation TD - {period} Revue trimestrielle",
+    thankYouSubtitleTemplate: "Revue de performance publisher TD - {period}",
     currentPeriod: "Période actuelle",
     comparisonPeriodYoy: "Période de comparaison (YoY)",
     basisYoy: "Référence : glissement annuel (YoY)",
@@ -166,7 +173,7 @@ const UI_LABELS_BY_LANGUAGE = {
   NL: {
     qbrReport: "QBR-rapport",
     anyQuestions: "Vragen?",
-    thankYouSubtitleTemplate: "TD Affiliate Programma - {period} Kwartaalreview",
+    thankYouSubtitleTemplate: "TD Publisher Performance Review - {period}",
     currentPeriod: "Huidige periode",
     comparisonPeriodYoy: "Vergelijkingsperiode (YoY)",
     basisYoy: "Basis: jaar-op-jaar (YoY)",
@@ -181,7 +188,7 @@ const UI_LABELS_BY_LANGUAGE = {
   DE: {
     qbrReport: "QBR-Bericht",
     anyQuestions: "Fragen?",
-    thankYouSubtitleTemplate: "TD Affiliate-Programm - {period} Quartalsbericht",
+    thankYouSubtitleTemplate: "TD Publisher Performance Review - {period}",
     currentPeriod: "Aktueller Zeitraum",
     comparisonPeriodYoy: "Vergleichszeitraum (YoY)",
     basisYoy: "Basis: Jahr-über-Jahr (YoY)",
@@ -196,7 +203,7 @@ const UI_LABELS_BY_LANGUAGE = {
   IT: {
     qbrReport: "Report QBR",
     anyQuestions: "Domande?",
-    thankYouSubtitleTemplate: "Programma di affiliazione TD - {period} Revisione trimestrale",
+    thankYouSubtitleTemplate: "TD Publisher Performance Review - {period}",
     currentPeriod: "Periodo corrente",
     comparisonPeriodYoy: "Periodo di confronto (YoY)",
     basisYoy: "Base: anno su anno (YoY)",
@@ -211,7 +218,7 @@ const UI_LABELS_BY_LANGUAGE = {
   NO: {
     qbrReport: "QBR-rapport",
     anyQuestions: "Spørsmål?",
-    thankYouSubtitleTemplate: "TD affiliateprogram - {period} kvartalsgjennomgang",
+    thankYouSubtitleTemplate: "TD Publisher Performance Review - {period}",
     currentPeriod: "Gjeldende periode",
     comparisonPeriodYoy: "Sammenligningsperiode (YoY)",
     basisYoy: "Grunnlag: år-over-år (YoY)",
@@ -226,7 +233,7 @@ const UI_LABELS_BY_LANGUAGE = {
   SV: {
     qbrReport: "QBR-rapport",
     anyQuestions: "Några frågor?",
-    thankYouSubtitleTemplate: "TD affiliateprogram - {period} kvartalsgenomgång",
+    thankYouSubtitleTemplate: "TD Publisher Performance Review - {period}",
     currentPeriod: "Aktuell period",
     comparisonPeriodYoy: "Jämförelseperiod (YoY)",
     basisYoy: "Grund: år över år (YoY)",
@@ -241,7 +248,7 @@ const UI_LABELS_BY_LANGUAGE = {
   DA: {
     qbrReport: "QBR-rapport",
     anyQuestions: "Nogen spørgsmål?",
-    thankYouSubtitleTemplate: "TD affiliateprogram - {period} kvartalsgennemgang",
+    thankYouSubtitleTemplate: "TD Publisher Performance Review - {period}",
     currentPeriod: "Aktuel periode",
     comparisonPeriodYoy: "Sammenligningsperiode (YoY)",
     basisYoy: "Grundlag: år-til-år (YoY)",
@@ -256,7 +263,7 @@ const UI_LABELS_BY_LANGUAGE = {
   FI: {
     qbrReport: "QBR-raportti",
     anyQuestions: "Kysymyksiä?",
-    thankYouSubtitleTemplate: "TD-kumppanuusohjelma - {period} neljännesvuosikatsaus",
+    thankYouSubtitleTemplate: "TD Publisher Performance Review - {period}",
     currentPeriod: "Nykyinen jakso",
     comparisonPeriodYoy: "Vertailujakso (YoY)",
     basisYoy: "Perusta: vuosi vuodelta (YoY)",
@@ -271,7 +278,7 @@ const UI_LABELS_BY_LANGUAGE = {
   ES: {
     qbrReport: "Informe QBR",
     anyQuestions: "¿Preguntas?",
-    thankYouSubtitleTemplate: "Programa de afiliación TD - {period} Revisión trimestral",
+    thankYouSubtitleTemplate: "TD Publisher Performance Review - {period}",
     currentPeriod: "Período actual",
     comparisonPeriodYoy: "Período de comparación (YoY)",
     basisYoy: "Base: interanual (YoY)",
@@ -286,7 +293,7 @@ const UI_LABELS_BY_LANGUAGE = {
   PL: {
     qbrReport: "Raport QBR",
     anyQuestions: "Pytania?",
-    thankYouSubtitleTemplate: "Program partnerski TD - {period} Przegląd kwartalny",
+    thankYouSubtitleTemplate: "TD Publisher Performance Review - {period}",
     currentPeriod: "Bieżący okres",
     comparisonPeriodYoy: "Okres porównawczy (r/r)",
     basisYoy: "Podstawa: rok do roku (r/r)",
@@ -716,10 +723,26 @@ function normalizeMetrics(programYoYTable) {
       unit: detectUnit(column, current || diff || varianceValue || previousValue || "")
     };
   });
+  const metricMap = Object.fromEntries(metrics.map((metric) => [metric.key, metric]));
+  const aliasMetric = (alias, sourceKey, label) => {
+    if (!metricMap[alias] && metricMap[sourceKey]) {
+      metricMap[alias] = {
+        ...metricMap[sourceKey],
+        key: alias,
+        label
+      };
+    }
+  };
+
+  aliasMetric("conversions", "sales", "Conversions");
+  aliasMetric("totalearnings", "totalearning", "Total Earnings");
+  aliasMetric("totalearnings", "totalcommission", "Total Earnings");
+  aliasMetric("digitalwallet", "digitalwallets", "Digital Wallet");
+  aliasMetric("publcommission", "publishercommission", "Publisher Commission");
 
   return {
     metrics,
-    metricMap: Object.fromEntries(metrics.map((metric) => [metric.key, metric]))
+    metricMap
   };
 }
 
@@ -982,15 +1005,15 @@ function defaultBullets(input) {
 }
 
 function buildHeadline(input) {
-  const clicks = input.metricMap.clicks;
-  const sales = input.metricMap.sales;
+  const conversions = input.metricMap.conversions || input.metricMap.sales;
   const conversion = input.metricMap.convrate;
   const orderValue = input.metricMap.ordervalue;
-  const aov = input.metricMap.aov;
+  const totalEarnings = input.metricMap.totalearnings || input.metricMap.totalcommission;
+  const publisherCommission = input.metricMap.publcommission || input.metricMap.publishercommission;
 
-  if ((conversion && conversion.varianceValue > 0) && (clicks && clicks.varianceValue < 0)) return "Conversion improved despite softer traffic";
-  if ((sales && sales.varianceValue > 0) && (orderValue && orderValue.varianceValue > 0)) return "Sales and order value both improved year on year";
-  if ((sales && sales.varianceValue < 0) && (aov && aov.varianceValue > 0)) return "Higher basket value only partly offset softer sales";
+  if ((conversions && conversions.varianceValue > 0) && (totalEarnings && totalEarnings.varianceValue > 0)) return "Conversions and earnings both improved year on year";
+  if ((conversion && conversion.varianceValue > 0) && (conversions && conversions.varianceValue < 0)) return "Conversion efficiency improved despite softer volume";
+  if ((publisherCommission && publisherCommission.varianceValue > 0) && (totalEarnings && totalEarnings.varianceValue > 0)) return "Publisher earnings improved across commission and wallet income";
   if ((orderValue && orderValue.varianceValue < 0) && (conversion && conversion.varianceValue > 0)) return "Efficiency improved, but value generation remained under pressure";
   if (input.qbrFocus) return `${input.qbrFocus} remains the primary QBR focus`;
   return "Performance was mixed across volume and value measures";
@@ -1077,25 +1100,21 @@ function buildExecutiveSummaryText(input) {
   }
 
   const m = input.metricMap || {};
-  const sales = m.sales || {};
-  const clicks = m.clicks || {};
+  const conversions = m.conversions || m.sales || {};
   const conv = m.convrate || {};
-  const aov = m.aov || {};
   const ov = m.ordervalue || {};
+  const publisherCommission = m.publcommission || m.publishercommission || {};
+  const digitalWallet = m.digitalwallet || {};
+  const totalEarnings = m.totalearnings || m.totalcommission || {};
 
-  const programLabel = cleanInlineText(input.client || "Program");
+  const publisherLabel = cleanInlineText(input.client || "Publisher");
   const periodLabel = parsePeriodRange(input.reportingPeriod, input.locale);
   const openingLine = isMultiProgramScope
     ? `Across ${selectedProgramCount} selected programs, performance was mixed in ${periodLabel}.`
-    : (() => {
-        const affiliateLabel = /affiliate program/i.test(programLabel)
-          ? programLabel
-          : `${programLabel} Affiliate Program`;
-        return `The ${affiliateLabel} delivered mixed results in ${periodLabel}.`;
-      })();
+    : `${publisherLabel} performance was mixed in ${periodLabel}.`;
 
   return cleanDeltaText(
-    `${openingLine} While AOV grew ${cleanDeltaText(aov.variance) || "N/A"} to ${aov.current || "-"} and conversion rate improved ${cleanDeltaText(conv.variance) || "N/A"}, total sales declined ${cleanDeltaText(sales.variance) || "N/A"} YoY driven by a ${cleanDeltaText(clicks.variance) || "N/A"} reduction in click volume. Total order value ${movementVerb(ov)} ${cleanDeltaText(ov.variance) || "N/A"} to ${ov.current || "-"}. Full KPI breakdown follows on the next slides.`
+    `${openingLine} Conversions moved ${cleanDeltaText(conversions.variance) || "N/A"} to ${conversions.current || "-"} and conversion rate moved ${cleanDeltaText(conv.variance) || "N/A"} to ${conv.current || "-"}. Publisher commission ${movementVerb(publisherCommission)} ${cleanDeltaText(publisherCommission.variance) || "N/A"} to ${publisherCommission.current || "-"}, while digital wallet earnings ${movementVerb(digitalWallet)} ${cleanDeltaText(digitalWallet.variance) || "N/A"} to ${digitalWallet.current || "-"}. Total earnings ended at ${totalEarnings.current || "-"} (${cleanDeltaText(totalEarnings.variance) || "N/A"}) and total order value ${movementVerb(ov)} ${cleanDeltaText(ov.variance) || "N/A"} to ${ov.current || "-"}.`
   );
 }
 
@@ -1118,14 +1137,15 @@ function buildMetricRows(metricMap, keys) {
 function buildProgramBreakdownTable(input) {
   const targetColumns = [
     "Program ID",
-    "Market",
-    "Clicks",
-    "Impressions",
-    "Sales",
-    "Conversion Rate",
-    "AOV",
-    "Total Order Value",
-    "YoY Change"
+    "Program Name",
+    "Publisher Commission",
+    "Digital Wallet",
+    "Total Earnings",
+    "Conversions",
+    "Order Value",
+    "Publisher Commission YoY %",
+    "Earnings YoY %",
+    "Conversions YoY %"
   ];
   const selectedProgramIds = new Set(
     (Array.isArray(input.analysisProgramIds) ? input.analysisProgramIds : [])
@@ -1153,7 +1173,7 @@ function buildProgramBreakdownTable(input) {
   }
 
   function rowHasMetrics(row) {
-    const cells = Array.isArray(row) ? row.slice(1) : [];
+    const cells = Array.isArray(row) ? row.slice(2) : [];
     return cells.some((cell) => {
       const value = cleanInlineText(cell);
       return value && value !== "-";
@@ -1184,32 +1204,66 @@ function buildProgramBreakdownTable(input) {
     return "-";
   }
 
+  function entry(programId, row) {
+    return {
+      programId: cleanInlineText(programId),
+      row,
+      publisherCommission: parseNumber(row[2]) || 0,
+      programName: cleanInlineText(row[1])
+    };
+  }
+
+  function sortEntries(entries) {
+    return entries
+      .slice()
+      .sort((a, b) => {
+        if (a.publisherCommission !== b.publisherCommission) return b.publisherCommission - a.publisherCommission;
+        return a.programName.localeCompare(b.programName);
+      });
+  }
+
+  function placeholderRows() {
+    return Array.from(selectedProgramIds).map((id) => [id, "-", "-", "-", "-", "-", "-", "-", "-", "-"]);
+  }
+
   const scope = input.programScopeTable;
   if (Array.isArray(scope) && scope.length && typeof scope[0] === "object" && !Array.isArray(scope[0])) {
-    const mappedRows = scope
+    const mappedEntries = scope
       .map((row) => {
         let programId = firstObjectValue(row, ["Program ID", "ProgramId", "ProgramID", "ID"]);
         if ((!programId || cleanInlineText(programId) === "-") && selectedProgramIdSingle) {
           programId = selectedProgramIdSingle;
         }
-        const market = firstObjectValue(row, ["Market", "Country", "Region"]);
-        const clicks = firstObjectValue(row, ["Clicks", "Current Clicks"]);
-        const impressions = firstObjectValue(row, ["Impressions"]);
-        const sales = firstObjectValue(row, ["Sales", "Current Sales"]);
-        const convRate = firstObjectValue(row, ["Conversion Rate", "Conv Rate"]);
-        const aov = firstObjectValue(row, ["AOV"]);
-        const totalOv = firstObjectValue(row, ["Total Order Value", "Current OV", "Order Value"]);
-        const yoy = firstObjectValue(row, ["YoY Change", "OV YoY %", "Sales YoY %"]);
-        return [programId, market, clicks, impressions, sales, convRate, aov, totalOv, yoy];
+        const programName = firstObjectValue(row, ["Program Name", "Program", "ProgramName", "Name"]) || programId;
+        const publisherCommission = firstObjectValue(row, ["Publisher Commission", "Current Publisher Commission", "Commission", "Current Commission"]);
+        const digitalWallet = firstObjectValue(row, ["Digital Wallet", "Digital Wallets", "DigitalWallet", "DigitalWallets"]);
+        const totalEarnings = firstObjectValue(row, ["Total Earnings", "Total Earning", "TotalEarnings"]);
+        const conversions = firstObjectValue(row, ["Conversions", "Current Conversions", "Sales", "Current Sales"]);
+        const orderValue = firstObjectValue(row, ["Order Value", "Total Order Value", "Current OV", "Current Order Value"]);
+        const publisherCommissionYoy = firstObjectValue(row, ["Publisher Commission YoY %", "Commission YoY %", "Publisher Commission % YoY", "Commission % YoY"]);
+        const earningsYoy = firstObjectValue(row, ["Earnings YoY %", "Total Earnings YoY %", "Total Earnings % YoY", "YoY %"]);
+        const conversionsYoy = firstObjectValue(row, ["Conversions YoY %", "Current Conversions YoY %", "Sales YoY %", "Current Sales YoY %"]);
+        return entry(programId, [
+          programId,
+          programName,
+          publisherCommission,
+          digitalWallet,
+          totalEarnings,
+          conversions,
+          orderValue,
+          publisherCommissionYoy,
+          earningsYoy,
+          conversionsYoy
+        ]);
       });
-    const rows = mappedRows.filter((row) => isSelectedProgramId(row[0]));
-    const fallbackRows = mappedRows.filter((row) => rowHasMetrics(row));
+    const rows = mappedEntries.filter((item) => isSelectedProgramId(item.programId));
+    const fallbackRows = mappedEntries.filter((item) => rowHasMetrics(item.row));
 
     if (!rows.length && selectedProgramIds.size && fallbackRows.length) {
       return {
         title: "Program-Level Breakdown",
         columns: targetColumns,
-        rows: fallbackRows,
+        rows: sortEntries(fallbackRows).map((item) => item.row),
         dense: false
       };
     }
@@ -1218,7 +1272,7 @@ function buildProgramBreakdownTable(input) {
       return {
         title: "Program-Level Breakdown",
         columns: targetColumns,
-        rows: Array.from(selectedProgramIds).map((id) => [id, "-", "-", "-", "-", "-", "-", "-", "-"]),
+        rows: placeholderRows(),
         dense: false
       };
     }
@@ -1226,37 +1280,49 @@ function buildProgramBreakdownTable(input) {
     return {
       title: "Program-Level Breakdown",
       columns: targetColumns,
-      rows,
+      rows: sortEntries(rows).map((item) => item.row),
       dense: false
     };
   }
 
   if (scope && Array.isArray(scope.rows) && scope.rows.length) {
     const idx = Object.fromEntries((scope.columns || []).map((col, i) => [cleanInlineText(col).toLowerCase(), i]));
-    const mappedRows = scope.rows
+    const mappedEntries = scope.rows
       .map((row) => {
         let programId = firstRowCell(row, idx, ["program id", "programid", "id"]);
         if ((!programId || cleanInlineText(programId) === "-") && selectedProgramIdSingle) {
           programId = selectedProgramIdSingle;
         }
-        const market = firstRowCell(row, idx, ["market", "country", "region"]);
-        const clicks = firstRowCell(row, idx, ["clicks", "current clicks"]);
-        const impressions = firstRowCell(row, idx, ["impressions"]);
-        const sales = firstRowCell(row, idx, ["sales", "current sales"]);
-        const convRate = firstRowCell(row, idx, ["conversion rate", "conv rate"]);
-        const aov = firstRowCell(row, idx, ["aov"]);
-        const totalOv = firstRowCell(row, idx, ["total order value", "current ov", "order value"]);
-        const yoy = firstRowCell(row, idx, ["yoy change", "ov yoy %", "sales yoy %"]);
-        return [programId, market, clicks, impressions, sales, convRate, aov, totalOv, yoy];
+        const programName = firstRowCell(row, idx, ["program name", "program", "programname", "name"]) || programId;
+        const publisherCommission = firstRowCell(row, idx, ["publisher commission", "current publisher commission", "commission", "current commission"]);
+        const digitalWallet = firstRowCell(row, idx, ["digital wallet", "digital wallets", "digitalwallet", "digitalwallets"]);
+        const totalEarnings = firstRowCell(row, idx, ["total earnings", "total earning", "totalearnings"]);
+        const conversions = firstRowCell(row, idx, ["conversions", "current conversions", "sales", "current sales"]);
+        const orderValue = firstRowCell(row, idx, ["order value", "total order value", "current ov", "current order value"]);
+        const publisherCommissionYoy = firstRowCell(row, idx, ["publisher commission yoy %", "commission yoy %", "publisher commission % yoy", "commission % yoy"]);
+        const earningsYoy = firstRowCell(row, idx, ["earnings yoy %", "total earnings yoy %", "total earnings % yoy", "yoy %"]);
+        const conversionsYoy = firstRowCell(row, idx, ["conversions yoy %", "current conversions yoy %", "sales yoy %", "current sales yoy %"]);
+        return entry(programId, [
+          programId,
+          programName,
+          publisherCommission,
+          digitalWallet,
+          totalEarnings,
+          conversions,
+          orderValue,
+          publisherCommissionYoy,
+          earningsYoy,
+          conversionsYoy
+        ]);
       });
-    const rows = mappedRows.filter((row) => isSelectedProgramId(row[0]));
-    const fallbackRows = mappedRows.filter((row) => rowHasMetrics(row));
+    const rows = mappedEntries.filter((item) => isSelectedProgramId(item.programId));
+    const fallbackRows = mappedEntries.filter((item) => rowHasMetrics(item.row));
 
     if (!rows.length && selectedProgramIds.size && fallbackRows.length) {
       return {
         title: "Program-Level Breakdown",
         columns: targetColumns,
-        rows: fallbackRows,
+        rows: sortEntries(fallbackRows).map((item) => item.row),
         dense: false
       };
     }
@@ -1265,7 +1331,7 @@ function buildProgramBreakdownTable(input) {
       return {
         title: "Program-Level Breakdown",
         columns: targetColumns,
-        rows: Array.from(selectedProgramIds).map((id) => [id, "-", "-", "-", "-", "-", "-", "-", "-"]),
+        rows: placeholderRows(),
         dense: false
       };
     }
@@ -1273,7 +1339,7 @@ function buildProgramBreakdownTable(input) {
     return {
       title: "Program-Level Breakdown",
       columns: targetColumns,
-      rows,
+      rows: sortEntries(rows).map((item) => item.row),
       dense: false
     };
   }
@@ -1282,7 +1348,7 @@ function buildProgramBreakdownTable(input) {
     return {
       title: "Program-Level Breakdown",
       columns: targetColumns,
-      rows: input.analysisProgramIds.map((id) => [id, "-", "-", "-", "-", "-", "-", "-", "-"]),
+      rows: input.analysisProgramIds.map((id) => [id, "-", "-", "-", "-", "-", "-", "-", "-", "-"]),
       dense: false
     };
   }
@@ -1290,7 +1356,7 @@ function buildProgramBreakdownTable(input) {
   return {
     title: "Program-Level Breakdown",
     columns: targetColumns,
-    rows: [["-", "-", "-", "-", "-", "-", "-", "-", "-"]],
+    rows: [["-", "-", "-", "-", "-", "-", "-", "-", "-", "-"]],
     dense: false
   };
 }
@@ -1346,6 +1412,68 @@ function tableOrPlaceholderNoRank(table, title, columns, placeholderRows = 5) {
     title,
     columns,
     rows: [columns.map(() => "-")]
+  };
+}
+
+function buildCompetitorAnalysisTable(table) {
+  const fallbackColumns = [
+    "Competitor Group Summary",
+    "Your Site",
+    "Publisher 1",
+    "Publisher 2",
+    "Publisher 3",
+    "Publisher 4",
+    "Distinct comp. prog. #"
+  ];
+  if (!table || !Array.isArray(table.rows) || !table.rows.length) {
+    return {
+      title: "Competitor Group Summary",
+      columns: fallbackColumns,
+      rows: [fallbackColumns.map(() => "-")]
+    };
+  }
+
+  const sourceColumns = Array.isArray(table.columns) ? table.columns : Object.keys(table.rows[0] || {});
+  const metricColumn = sourceColumns.find((column) => /^competitor group summary$/i.test(column))
+    || sourceColumns.find((column) => /^metric$/i.test(column))
+    || sourceColumns[0]
+    || "Metric";
+  const valueColumns = sourceColumns.filter((column) => column !== metricColumn && column !== "_columns");
+  const columns = ["Competitor Group Summary", ...valueColumns];
+  const rows = table.rows.slice(0, 3).map((row) => [
+    row[metricColumn] || "-",
+    ...valueColumns.map((column) => row[column] || "-")
+  ]);
+
+  return {
+    title: "Competitor Group Summary",
+    columns,
+    rows
+  };
+}
+
+function buildWeeklyPubCommComboChart(table) {
+  if (!table || !Array.isArray(table.rows) || !table.rows.length) return null;
+
+  const rawColumns = Array.isArray(table.columns) ? table.columns : Object.keys(table.rows[0] || {});
+  const categoryColumn = rawColumns.find((column) => /^(week|date|period)$/i.test(cleanInlineText(column)))
+    || rawColumns[0]
+    || "Week";
+  const seriesColumns = rawColumns.filter((column) => column !== categoryColumn && column !== "_columns");
+  if (!seriesColumns.length) return null;
+
+  const categories = table.rows.map((row) => cleanInlineText(row[categoryColumn] || "-"));
+  const series = seriesColumns.map((column, index) => ({
+    label: cleanInlineText(column || `Series ${index + 1}`),
+    renderAs: index === 0 ? "bar" : "line",
+    values: table.rows.map((row) => parseNumber(row[column]) || 0)
+  }));
+
+  return {
+    type: "weekly-pub-comm-combo",
+    title: "Publ comm by week",
+    categories,
+    series
   };
 }
 
@@ -1849,13 +1977,12 @@ function getTopDirection(table, directionLabel) {
 
 function buildKpiAnalysisBullets(input) {
   const m = input.metricMap;
-  const sales = m.sales;
-  const clicks = m.clicks;
+  const conversions = m.conversions || m.sales;
   const conv = m.convrate;
   const ov = m.ordervalue;
-  const aov = m.aov;
-  const cpa = m.cpa;
-  const roi = m.roi;
+  const publisherCommission = m.publcommission || m.publishercommission;
+  const digitalWallet = m.digitalwallet;
+  const totalEarnings = m.totalearnings || m.totalcommission;
   const cleanPublisherLabel = (value) =>
     cleanInlineText(value || "")
       .replace(/\s*-\s*I$/i, "")
@@ -1902,7 +2029,7 @@ function buildKpiAnalysisBullets(input) {
   }
 
   const looksLikeRawKpiSnapshot = (line) =>
-    /^(sales|order value|clicks|conv rate|conversion rate|aov|publ(?:isher)? commission(?:\s*\/\s*total commission)?|total commission|cpa|roi)\b.*:/i
+    /^(sales|conversions?|order value|clicks|conv rate|conversion rate|aov|publ(?:isher)? commission(?:\s*\/\s*total commission)?|digital wallet|total earnings?|total commission|cpa|roi)\b.*:/i
       .test(cleanInlineText(line));
   const looksLikeProgramListing = (line) =>
     /^\s*program\s*id\s*\d+/i.test(cleanInlineText(line))
@@ -1922,39 +2049,32 @@ function buildKpiAnalysisBullets(input) {
     .filter(Boolean)
     .join(", ");
 
-  const topAovUpliftRow = (input.tables.moversAov?.rows || [])
-    .filter((row) => cleanInlineText(row.Direction || "").toLowerCase() === "up")
-    .sort((a, b) => (parseNumber(b["YoY Change"]) || 0) - (parseNumber(a["YoY Change"]) || 0))[0];
-  const topAovUpliftText = topAovUpliftRow
-    ? `${cleanPublisherLabel(topAovUpliftRow.Publisher || "Top publisher")} recorded one of the strongest AOV uplifts (${cleanInlineText(topAovUpliftRow["YoY Change"] || "N/A")}, ${cleanInlineText(topAovUpliftRow["YoY %"] || "N/A")}).`
-    : "AOV uplift was concentrated in a smaller set of higher-value publishers.";
-
   const bullets = [
-    `Conversion Rate Improvement: ${metricSentence("Conversion rate", conv)} Click volume ${directionWord(clicks?.varianceValue)} ${clicks?.variance || "N/A"} (${clicks?.difference || "-"}) while sales ${directionWord(sales?.varianceValue)} ${sales?.variance || "N/A"} (${sales?.difference || "-"}), indicating a more efficient sales-to-click mix than in the prior year.`,
-    `Sales Volume Pressure: Total sales ${directionWord(sales?.varianceValue)} ${sales?.variance || "N/A"} (${sales?.difference || "-"}). Click volume ${directionWord(clicks?.varianceValue)} ${clicks?.variance || "N/A"} (${clicks?.difference || "-"}). ${declineList ? `Largest declines came from ${declineList}.` : "Largest declining publisher contribution requires confirmation from mover tables."}`,
-    `AOV Growth Partially Offsetting Volume Decline: ${metricSentence("AOV", aov)} Total order value ${directionWord(ov?.varianceValue)} ${ov?.variance || "N/A"} (${ov?.difference || "-"}) despite lower transaction volume. ${topAovUpliftText}`,
-    `Rising CPA: ${metricSentence("CPA", cpa)} Publisher commission changed ${m.publcommission?.variance || "N/A"} (${m.publcommission?.difference || "-"}) year-over-year, so each conversion carried a higher acquisition cost.`,
-    `ROI Trend: ${metricSentence("ROI", roi)} For every unit of commission in the current period, programme return moved from ${roi?.previous || "-"} to ${roi?.current || "-"}, showing marginal improvement in spend efficiency.`
+    `Conversion Rate Movement: ${metricSentence("Conversion rate", conv)} Conversions ${directionWord(conversions?.varianceValue)} ${conversions?.variance || "N/A"} (${conversions?.difference || "-"}), showing how efficiently the publisher converted traffic into outcomes.`,
+    `Conversion Volume: Total conversions ${directionWord(conversions?.varianceValue)} ${conversions?.variance || "N/A"} (${conversions?.difference || "-"}). ${declineList ? `Largest declines came from ${declineList}.` : "Largest declining publisher contribution requires confirmation from mover tables."}`,
+    `Order Value: ${metricSentence("Total order value", ov)} Value generation moved alongside conversion volume and earnings performance.`,
+    `Publisher Commission: ${metricSentence("Publisher commission", publisherCommission)} Commission remains the core publisher earning component.`,
+    `Total Earnings: ${metricSentence("Total earnings", totalEarnings)} Digital wallet contribution was ${digitalWallet?.current || "-"} (${digitalWallet?.variance || "N/A"}), so total earnings combine commission and wallet income.`
   ];
   const generated = bullets.map((line) => cleanInlineText(line)).filter(Boolean);
 
   const topicTitleByKey = {
-    conversion: "Conversion Rate Improvement",
-    salesVolume: "Sales Volume Pressure",
-    aovValue: "AOV Growth Partially Offsetting Volume Decline",
-    cpa: "Rising CPA",
-    roi: "ROI Trend"
+    conversion: "Conversion Rate Movement",
+    conversionVolume: "Conversion Volume",
+    orderValue: "Order Value",
+    commission: "Publisher Commission",
+    totalEarnings: "Total Earnings"
   };
-  const topicOrder = ["conversion", "salesVolume", "aovValue", "cpa", "roi"];
+  const topicOrder = ["conversion", "conversionVolume", "orderValue", "commission", "totalEarnings"];
 
   const topicKeyFromText = (value) => {
     const text = cleanInlineText(value || "").toLowerCase();
     if (!text) return "";
-    if (/conversion|conv rate/.test(text)) return "conversion";
-    if (/sales volume pressure|sales|click volume|clicks|traffic/.test(text)) return "salesVolume";
-    if (/aov|average order value|order value/.test(text)) return "aovValue";
-    if (/rising cpa|cost per acquisition|\bcpa\b|commission/.test(text)) return "cpa";
-    if (/roi trend|return on investment|\broi\b/.test(text)) return "roi";
+    if (/conversion volume|conversions|sales volume pressure|sales/.test(text)) return "conversionVolume";
+    if (/conversion rate|conv rate/.test(text)) return "conversion";
+    if (/order value|total order value/.test(text)) return "orderValue";
+    if (/publisher commission|commission/.test(text)) return "commission";
+    if (/total earnings?|digital wallet|wallet/.test(text)) return "totalEarnings";
     return "";
   };
 
@@ -2003,13 +2123,6 @@ function buildKpiAnalysisBullets(input) {
     const generatedDetail = cleanInlineText(generatedByTopic[topicKey] || "");
 
     let aiDetailForTopic = aiDetail;
-    if (topicKey === "cpa") {
-      aiDetailForTopic = aiDetailForTopic
-        .replace(/;?\s*ROI[\s\S]*$/i, "")
-        .replace(/\s{2,}/g, " ")
-        .trim();
-    }
-
     const detail = generatedDetail || aiDetailForTopic;
     if (detail) pushUnique(`${title}: ${detail}`);
   });
@@ -2104,9 +2217,9 @@ function buildDeckSpec(input, theme) {
   const slides = [];
   const headline = buildHeadline(input);
   const executiveCardConfig = [
-    { key: "sales", label: "Sales", iconKey: "sales", icon: "\u2630" },
+    { key: "conversions", label: "Conversions", iconKey: "sales", icon: "\u2630" },
     { key: "ordervalue", label: "Total Order Value", iconKey: "ordervalue", icon: "\u25A4" },
-    { key: "aov", label: "Average Order Value (AOV)", iconKey: "aov", icon: "\u2197" },
+    { key: "totalearnings", label: "Total Earnings", iconKey: "commission", icon: "\u00A3" },
     { key: "convrate", label: "Conversion Rate", iconKey: "convrate", icon: "\u26A1" },
     { key: "publcommission", label: "Publisher Commission", iconKey: "commission", icon: "\u00A3" }
   ];
@@ -2127,14 +2240,13 @@ function buildDeckSpec(input, theme) {
   const reportingSummary = `${input.reportingPeriod} vs ${input.comparisonPeriod}`;
 
   const volumeRows = buildMetricRows(input.metricMap, [
-    ["clicks", "Clicks"],
-    ["sales", "Sales (Transactions)"],
+    ["conversions", "Conversions"],
     ["convrate", "Conversion Rate"],
-    ["aov", "Average Order Value (AOV)"],
     ["ordervalue", "Total Order Value"],
     ["publcommission", "Publisher Commission"],
-    ["cpa", "Cost Per Acquisition (CPA)"],
-    ["roi", "Return on Investment (ROI)"]
+    ["digitalwallet", "Digital Wallet"],
+    ["totalearnings", "Total Earnings"],
+    ["activeprograms", "Active Programs"]
   ]);
 
   const segmentTable = input.tables.segmentSnapshot;
@@ -2142,6 +2254,8 @@ function buildDeckSpec(input, theme) {
   const moversOrderValue = input.tables.moversOrderValue;
   const moversClicks = input.tables.moversClicks;
   const brandNew = input.tables.brandNewPublishers;
+  const competitorAnalysis = buildCompetitorAnalysisTable(input.tables.competitorAnalysisTable);
+  const competitorWeeklyChart = buildWeeklyPubCommComboChart(input.tables.competitorWeeklyPubCommChart);
   const kpiAnalysisBullets = buildKpiAnalysisBullets(input);
   const publisherOverviewBullets = buildPublisherOverviewBullets(input);
   const segmentPerformanceBlocks = buildSegmentPerformanceBlocks(input);
@@ -2151,12 +2265,12 @@ function buildDeckSpec(input, theme) {
   slides.push({
     id: "cover",
     kind: "cover",
-    title: `${input.client} Affiliate Program Quarterly Business Review`,
+    title: `${input.client} performance review`,
     subtitle: "",
     headline,
     summary: input.qbrFocusDetail
       ? `${input.qbrFocus}. ${input.qbrFocusDetail}`
-      : `A comprehensive year-over-year analysis of the ${input.client} affiliate program's performance, publisher dynamics, and strategic priorities to drive growth and optimise outcomes.`,
+      : `A focused year-over-year review of ${input.client} publisher performance, conversion dynamics, earnings and strategic priorities to drive growth and optimise outcomes.`,
     bullets: [`Client: ${input.client}`, `Reporting currency: ${input.currencyCode}`, `Language: ${input.languageName}`],
     kpis: [],
     tables: []
@@ -2191,7 +2305,7 @@ function buildDeckSpec(input, theme) {
   slides.push({
     id: "kpi-volume-conversion",
     kind: "kpi-table",
-    title: "KPI Summary Table: Volume, Conversion, Cost & ROI",
+    title: "KPI Summary Table: Conversions & Earnings",
     subtitle: "Unified KPI breakdown vs prior year.",
     bullets: [],
     kpis: [],
@@ -2203,14 +2317,14 @@ function buildDeckSpec(input, theme) {
         dense: false
       }
     ],
-    footerNote: "Conversion rate = Sales \u00F7 Clicks. AOV = Total Order Value \u00F7 Sales. ROI = Total Order Value \u00F7 Total Commission."
+    footerNote: "Total earnings = Publisher Commission + Digital Wallet. Conversion rate uses the source API's conversion-rate basis."
   });
 
   slides.push({
     id: "kpi-cost-roi",
     kind: "program-breakdown",
-    title: "Program-Level Breakdown: Volume & Conversion",
-    subtitle: "Per-program view for selected request scope.",
+    title: "Program-Level Analysis: Publisher Commission",
+    subtitle: "Per-program view ordered by publisher commission.",
     bullets: [],
     kpis: [],
     tables: [programBreakdownTable]
@@ -2331,6 +2445,18 @@ function buildDeckSpec(input, theme) {
       ])
     ],
     callout: "Brand-new publishers are not included in YoY comparisons until a prior-year baseline exists."
+  });
+
+  slides.push({
+    id: "competitor-analysis",
+    kind: "competitor-analysis",
+    title: "Competitor Analysis",
+    subtitle: "Anonymous comparison of publisher commission coverage and white-space programmes.",
+    bullets: [],
+    kpis: [],
+    tables: [competitorAnalysis],
+    chart: competitorWeeklyChart,
+    callout: "Pub Comm of the above is calculated only for programmes where the primary publisher has 0 publisher commission."
   });
 
   slides.push({
@@ -2757,6 +2883,162 @@ function addKpis(slide, deck, cards, origin, mode = "light") {
   });
 }
 
+function formatAxisNumber(value, locale = "en-GB") {
+  return Math.round(Number(value) || 0).toLocaleString(locale);
+}
+
+function niceAxisMax(value) {
+  const max = Math.max(1, Number(value) || 0);
+  const magnitude = 10 ** Math.floor(Math.log10(max));
+  const normalized = max / magnitude;
+  const nice = normalized <= 1 ? 1 : normalized <= 2 ? 2 : normalized <= 5 ? 5 : 10;
+  return nice * magnitude;
+}
+
+function addWeeklyComboChart(slide, deck, chart, box) {
+  if (!chart || !Array.isArray(chart.categories) || !chart.categories.length || !Array.isArray(chart.series)) return;
+
+  const locale = deck.metadata.locale || "en-GB";
+  const palette = [
+    deck.theme.colors.accent,
+    "#F28E2B",
+    "#9AA3AD",
+    "#F2C94C",
+    "#2F6FF2"
+  ];
+  const values = chart.series.flatMap((series) => series.values || []);
+  const axisMax = niceAxisMax(Math.max(...values, 0));
+  const plot = {
+    x: box.x + 0.62,
+    y: box.y + 0.35,
+    w: box.w - 0.82,
+    h: box.h - 0.92
+  };
+  const categoryCount = chart.categories.length;
+  const step = plot.w / Math.max(1, categoryCount);
+  const zeroY = plot.y + plot.h;
+  const toY = (value) => zeroY - ((Number(value) || 0) / axisMax) * plot.h;
+  const centerX = (index) => plot.x + step * index + step / 2;
+
+  slide.addText(cleanInlineText(chart.title || "Publ comm by week"), {
+    x: box.x,
+    y: box.y,
+    w: box.w,
+    h: 0.2,
+    align: "center",
+    fontFace: deck.theme.fonts.body,
+    fontSize: 8.5,
+    color: toColor(deck.theme.colors.muted),
+    margin: 0
+  });
+
+  for (let i = 0; i <= 5; i += 1) {
+    const y = plot.y + (plot.h / 5) * i;
+    const value = axisMax - (axisMax / 5) * i;
+    slide.addShape("line", {
+      x: plot.x,
+      y,
+      w: plot.w,
+      h: 0,
+      line: { color: toColor("#D9DEE8"), pt: 0.45, transparency: i === 5 ? 10 : 25 }
+    });
+    slide.addText(formatAxisNumber(value, locale), {
+      x: box.x,
+      y: y - 0.07,
+      w: 0.48,
+      h: 0.14,
+      align: "right",
+      fontFace: deck.theme.fonts.body,
+      fontSize: 6.2,
+      color: toColor(deck.theme.colors.muted),
+      margin: 0
+    });
+  }
+
+  const primary = chart.series.find((series) => series.renderAs === "bar") || chart.series[0];
+  const barW = Math.min(0.2, step * 0.32);
+  (primary.values || []).forEach((value, index) => {
+    const top = toY(value);
+    slide.addShape("rect", {
+      x: centerX(index) - barW / 2,
+      y: top,
+      w: barW,
+      h: Math.max(0.02, zeroY - top),
+      line: { color: toColor(palette[0]), pt: 0 },
+      fill: { color: toColor(palette[0]), transparency: 8 }
+    });
+  });
+
+  chart.series
+    .filter((series) => series !== primary)
+    .forEach((series, seriesIndex) => {
+      const color = palette[(seriesIndex + 1) % palette.length];
+      const points = (series.values || []).map((value, index) => [centerX(index), toY(value)]);
+      drawPolyline(slide, points, color, 0, 1.2);
+      points.forEach(([x, y]) => {
+        slide.addShape("ellipse", {
+          x: x - 0.025,
+          y: y - 0.025,
+          w: 0.05,
+          h: 0.05,
+          line: { color: toColor(color), pt: 0 },
+          fill: { color: toColor(color) }
+        });
+      });
+    });
+
+  chart.categories.forEach((category, index) => {
+    slide.addText(cleanInlineText(category), {
+      x: centerX(index) - step * 0.48,
+      y: zeroY + 0.08,
+      w: step * 0.96,
+      h: 0.15,
+      align: "center",
+      fontFace: deck.theme.fonts.body,
+      fontSize: 5.8,
+      color: toColor(deck.theme.colors.muted),
+      margin: 0
+    });
+  });
+
+  const legend = chart.series.slice(0, 5);
+  const legendW = 1.12;
+  const legendStartX = plot.x + Math.max(0, (plot.w - legend.length * legendW) / 2);
+  legend.forEach((series, index) => {
+    const color = palette[index % palette.length];
+    const x = legendStartX + index * legendW;
+    const y = box.y + box.h - 0.22;
+    if (series.renderAs === "bar") {
+      slide.addShape("rect", {
+        x,
+        y: y + 0.04,
+        w: 0.15,
+        h: 0.05,
+        line: { color: toColor(color), pt: 0 },
+        fill: { color: toColor(color) }
+      });
+    } else {
+      slide.addShape("line", {
+        x,
+        y: y + 0.07,
+        w: 0.16,
+        h: 0,
+        line: { color: toColor(color), pt: 1.1 }
+      });
+    }
+    slide.addText(cleanInlineText(series.label), {
+      x: x + 0.19,
+      y,
+      w: legendW - 0.2,
+      h: 0.16,
+      fontFace: deck.theme.fonts.body,
+      fontSize: 6.4,
+      color: toColor(deck.theme.colors.muted),
+      margin: 0
+    });
+  });
+}
+
 function isDeltaColumn(header) {
   const lower = cleanInlineText(header).toLowerCase();
   return lower.includes("change") || lower.includes("variance") || lower.includes("yoy") || lower.includes("trend");
@@ -2767,6 +3049,7 @@ function cellTextColor(table, column, value, deck) {
   const text = cleanInlineText(value);
   if (text.startsWith("+")) return toColor(deck.theme.colors.success);
   if (text.startsWith("-")) return toColor(deck.theme.colors.accentAlt);
+  if (/^(0(?:\.0+)?%?|n\/a|na|-)?$/i.test(text)) return toColor(deck.theme.colors.warning);
   return toColor(deck.theme.colors.ink);
 }
 
@@ -3007,7 +3290,7 @@ function renderSlide(slide, deck, spec, pageNumber) {
     const thankYouSubtitleTemplate = uiLabel(
       deck,
       "thankYouSubtitleTemplate",
-      "TD Affiliate Program - {period} Quarterly Business Review"
+      "TD Publisher Performance Review - {period}"
     );
     const thankYouSubtitle = thankYouSubtitleTemplate.includes("{period}")
       ? thankYouSubtitleTemplate.replace("{period}", deck.metadata.reportingPeriod)
@@ -3477,6 +3760,26 @@ function renderSlide(slide, deck, spec, pageNumber) {
         margin: 0
       });
     });
+    return;
+  }
+
+  if (spec.kind === "competitor-analysis") {
+    if (spec.tables && spec.tables[0]) {
+      addTable(slide, deck, spec.tables[0], {
+        x: 0.40,
+        y: 1.82,
+        w: 12.50,
+        h: 1.35
+      });
+    }
+    if (spec.chart) {
+      addWeeklyComboChart(slide, deck, spec.chart, {
+        x: 0.56,
+        y: 3.42,
+        w: 12.18,
+        h: 3.42
+      });
+    }
     return;
   }
 
