@@ -54,7 +54,13 @@ const TABLE_KEY_MAP = {
   moversshakersov: "moversOrderValue",
   moversshakersclicks: "moversClicks",
   moversshakersaov: "moversAov",
+  moversshakerscommissionchart: "moversCommissionChart",
+  moversshakerscommission: "moversCommission",
+  moverscommissionchart: "moversCommissionChart",
+  moverscommission: "moversCommission",
   brandnewtop: "brandNewPublishers",
+  brandnewprogramstable: "brandNewPublishers",
+  brandnewprograms: "brandNewPublishers",
   newemergingtop: "newEmergingPublishers",
   stoppedactivitytop: "stoppedActivity",
   newpublisherprospects: "newPublisherProspects",
@@ -1142,7 +1148,6 @@ function buildProgramBreakdownTable(input) {
     "Program ID",
     "Program Name",
     "Publisher Commission",
-    "Digital Wallet",
     "Total Earnings",
     "Conversions",
     "Order Value",
@@ -1226,7 +1231,7 @@ function buildProgramBreakdownTable(input) {
   }
 
   function placeholderRows() {
-    return Array.from(selectedProgramIds).map((id) => [id, "-", "-", "-", "-", "-", "-", "-", "-", "-"]);
+    return Array.from(selectedProgramIds).map((id) => [id, "-", "-", "-", "-", "-", "-", "-", "-"]);
   }
 
   const scope = input.programScopeTable;
@@ -1239,7 +1244,6 @@ function buildProgramBreakdownTable(input) {
         }
         const programName = firstObjectValue(row, ["Program Name", "Program", "ProgramName", "Name"]) || programId;
         const publisherCommission = firstObjectValue(row, ["Publisher Commission", "Current Publisher Commission", "Commission", "Current Commission"]);
-        const digitalWallet = firstObjectValue(row, ["Digital Wallet", "Digital Wallets", "DigitalWallet", "DigitalWallets"]);
         const totalEarnings = firstObjectValue(row, ["Total Earnings", "Total Earning", "TotalEarnings"]);
         const conversions = firstObjectValue(row, ["Conversions", "Current Conversions", "Sales", "Current Sales"]);
         const orderValue = firstObjectValue(row, ["Order Value", "Total Order Value", "Current OV", "Current Order Value"]);
@@ -1250,7 +1254,6 @@ function buildProgramBreakdownTable(input) {
           programId,
           programName,
           publisherCommission,
-          digitalWallet,
           totalEarnings,
           conversions,
           orderValue,
@@ -1298,7 +1301,6 @@ function buildProgramBreakdownTable(input) {
         }
         const programName = firstRowCell(row, idx, ["program name", "program", "programname", "name"]) || programId;
         const publisherCommission = firstRowCell(row, idx, ["publisher commission", "current publisher commission", "commission", "current commission"]);
-        const digitalWallet = firstRowCell(row, idx, ["digital wallet", "digital wallets", "digitalwallet", "digitalwallets"]);
         const totalEarnings = firstRowCell(row, idx, ["total earnings", "total earning", "totalearnings"]);
         const conversions = firstRowCell(row, idx, ["conversions", "current conversions", "sales", "current sales"]);
         const orderValue = firstRowCell(row, idx, ["order value", "total order value", "current ov", "current order value"]);
@@ -1309,7 +1311,6 @@ function buildProgramBreakdownTable(input) {
           programId,
           programName,
           publisherCommission,
-          digitalWallet,
           totalEarnings,
           conversions,
           orderValue,
@@ -1351,7 +1352,7 @@ function buildProgramBreakdownTable(input) {
     return {
       title: "Program-Level Breakdown",
       columns: targetColumns,
-      rows: input.analysisProgramIds.map((id) => [id, "-", "-", "-", "-", "-", "-", "-", "-", "-"]),
+      rows: input.analysisProgramIds.map((id) => [id, "-", "-", "-", "-", "-", "-", "-", "-"]),
       dense: false
     };
   }
@@ -1359,8 +1360,62 @@ function buildProgramBreakdownTable(input) {
   return {
     title: "Program-Level Breakdown",
     columns: targetColumns,
-    rows: [["-", "-", "-", "-", "-", "-", "-", "-", "-", "-"]],
+    rows: [["-", "-", "-", "-", "-", "-", "-", "-", "-"]],
     dense: false
+  };
+}
+
+function buildMoversCommissionBarChart(table, locale = "en-GB") {
+  const rows = table && Array.isArray(table.rows) ? table.rows : [];
+  const parsedRows = rows
+    .map((row) => {
+      const label = compactLabel(readTableCell(row, ["Chart Label", "Program Name", "Program", "Publisher"]), 48);
+      const value = parseNumber(readTableCell(row, [
+        "Publisher Commission Change Value",
+        "Publisher Commission Change",
+        "YoY Change"
+      ])) ?? 0;
+      const display = cleanInlineText(readTableCell(row, [
+        "Publisher Commission Change",
+        "YoY Change",
+        "Change"
+      ]) || value.toLocaleString(locale));
+      const pct = cleanInlineText(readTableCell(row, [
+        "Publisher Commission YoY %",
+        "YoY %",
+        "Variance"
+      ]));
+
+      return {
+        label,
+        value,
+        display,
+        pct,
+        direction: value > 0 ? "up" : value < 0 ? "down" : "flat"
+      };
+    })
+    .filter((row) => row.label && Number.isFinite(row.value) && row.value !== 0);
+
+  const up = parsedRows
+    .filter((row) => row.value > 0)
+    .sort((a, b) => b.value - a.value)
+    .slice(0, 10);
+  const down = parsedRows
+    .filter((row) => row.value < 0)
+    .sort((a, b) => a.value - b.value)
+    .slice(0, 10);
+  const chartRows = up.concat(down);
+
+  return {
+    type: "movers-commission-bar",
+    title: "Partners with most change in publisher commission period-on-period",
+    rows: chartRows.length ? chartRows : [{
+      label: "No qualifying program movement",
+      value: 0,
+      display: "-",
+      pct: "",
+      direction: "flat"
+    }]
   };
 }
 
@@ -1932,6 +1987,27 @@ function buildDirectionalMoversTable(table, title, columns, upCount = 5, downCou
   };
 }
 
+function buildTopNewProgramsTable(table) {
+  const columns = [
+    "Program ID",
+    "Program Name",
+    "Conversions",
+    "Order Value",
+    "Publisher Commission",
+    "Total Earnings"
+  ];
+  const rows = table && Array.isArray(table.rows)
+    ? table.rows.slice(0, 10).map((row) => columns.map((column) => readTableCell(row, [column]) || "-"))
+    : [];
+
+  return {
+    title: "Top 10 New Programs",
+    columns,
+    rows: rows.length ? rows : [columns.map(() => "-")],
+    dense: false
+  };
+}
+
 function buildActionBullets(input) {
   const recommendations = input.recommendations.slice(0, 5);
   if (recommendations.length) return recommendations;
@@ -2222,9 +2298,10 @@ function buildDeckSpec(input, theme) {
   const executiveCardConfig = [
     { key: "conversions", label: "Conversions", iconKey: "sales", icon: "\u2630" },
     { key: "ordervalue", label: "Total Order Value", iconKey: "ordervalue", icon: "\u25A4" },
+    { key: "publcommission", label: "Publisher Commission", iconKey: "commission", icon: "\u00A3" },
+    { key: "digitalwallet", label: "Digital Wallet", iconKey: "commission", icon: "\u00A3" },
     { key: "totalearnings", label: "Total Earnings", iconKey: "commission", icon: "\u00A3" },
-    { key: "convrate", label: "Conversion Rate", iconKey: "convrate", icon: "\u26A1" },
-    { key: "publcommission", label: "Publisher Commission", iconKey: "commission", icon: "\u00A3" }
+    { key: "convrate", label: "Conversion Rate", iconKey: "convrate", icon: "\u26A1" }
   ];
   const topCards = executiveCardConfig
     .map((cfg) => {
@@ -2255,11 +2332,8 @@ function buildDeckSpec(input, theme) {
     ["activeprograms", "Active Programs"]
   ]);
 
-  const segmentTable = input.tables.segmentSnapshot;
-  const moversSales = input.tables.moversSales;
-  const moversOrderValue = input.tables.moversOrderValue;
-  const moversClicks = input.tables.moversClicks;
   const brandNew = input.tables.brandNewPublishers;
+  const moversCommissionChart = buildMoversCommissionBarChart(input.tables.moversCommissionChart || input.tables.moversCommission, input.locale);
   const competitorAnalysis = buildCompetitorAnalysisTable(input.tables.competitorAnalysisTable);
   const competitorWeeklyChart = buildWeeklyPubCommComboChart(input.tables.competitorWeeklyPubCommChart);
   const kpiAnalysisBullets = buildKpiAnalysisBullets(input);
@@ -2320,6 +2394,7 @@ function buildDeckSpec(input, theme) {
         title: "KPI Summary",
         columns: ["Metric", "Recent", "Previous", "Difference", "% Variance"],
         rows: volumeRows.length ? volumeRows : [["-", "-", "-", "-", "-"]],
+        colAlign: ["left", "center", "center", "center", "center"],
         dense: false
       }
     ],
@@ -2337,6 +2412,17 @@ function buildDeckSpec(input, theme) {
   });
 
   slides.push({
+    id: "movers-shakers-publisher-commission",
+    kind: "movers-bar-chart",
+    title: "Movers & Shakers: Publisher Commission",
+    subtitle: "Top 10 positive and top 10 negative period-on-period publisher commission changes.",
+    bullets: [],
+    kpis: [],
+    tables: [],
+    chart: moversCommissionChart
+  });
+
+  slides.push({
     id: "kpi-highlights",
     kind: "insights-blue",
     title: "KPI Highlights & Business Implications",
@@ -2347,110 +2433,16 @@ function buildDeckSpec(input, theme) {
   });
 
   slides.push({
-    id: "publisher-overview",
-    kind: "publisher-overview",
-    title: "Publisher Performance Overview",
-    subtitle: "High-level summary of publisher activity, segmentation and YoY movement.",
-    bullets: publisherOverviewBullets.slice(0, 4),
-    kpis: [],
-    tables: segmentTable
-      ? [
-          {
-            title: "Publisher Activity Summary",
-            columns: segmentTable.columns,
-            rows: segmentTable.rows.map((row) => segmentTable.columns.map((column) => row[column] || "-")),
-            colW: [1.25, 1.15, 1.25, 1.2, 1.15, 0.9],
-            colAlign: ["left", "right", "right", "right", "right", "right"],
-            dense: false
-          }
-        ]
-      : []
-  });
-
-  slides.push({
-    id: "segment-performance",
-    kind: "segment-performance-blue",
-    title: "Publisher Segment Performance",
-    subtitle: "",
-    bullets: segmentPerformanceBlocks,
-    kpis: [],
-    tables: []
-  });
-
-  slides.push({
-    id: "movers-shakers-sales",
-    kind: "publisher-table",
-    title: "Movers & Shakers: Sales",
-    subtitle: "Largest YoY sales movers and decliners.",
-    bullets: [],
-    kpis: [],
-    tables: [
-      buildDirectionalMoversTable(moversSales, "Movers & Shakers - Sales", [
-        "Publisher",
-        "Site ID",
-        "Current Sales",
-        "YoY Change",
-        "YoY %"
-      ], 5, 5, input.locale)
-    ],
-    callout: "Up = positive YoY movement; Down = negative YoY movement."
-  });
-
-  slides.push({
-    id: "movers-shakers-ov",
-    kind: "publisher-table",
-    title: "Movers & Shakers: Order Value",
-    subtitle: "Largest YoY order value movers and decliners.",
-    bullets: [],
-    kpis: [],
-    tables: [
-      buildDirectionalMoversTable(moversOrderValue, "Movers & Shakers - Order Value", [
-        "Publisher",
-        "Site ID",
-        "Current OV",
-        "YoY Change",
-        "YoY %"
-      ], 5, 5, input.locale)
-    ],
-    callout: "Order value movers indicate where incremental revenue was won or lost YoY."
-  });
-
-  slides.push({
-    id: "movers-shakers-clicks",
-    kind: "publisher-table",
-    title: "Movers & Shakers: Clicks",
-    subtitle: "Largest YoY click movers and decliners.",
-    bullets: [],
-    kpis: [],
-    tables: [
-      buildDirectionalMoversTable(moversClicks, "Movers & Shakers - Clicks", [
-        "Publisher",
-        "Site ID",
-        "Current Clicks",
-        "YoY Change",
-        "YoY %"
-      ], 5, 5, input.locale)
-    ],
-    callout: "Traffic movement helps explain volume and conversion shifts across the publisher mix."
-  });
-
-  slides.push({
     id: "brand-new-publishers",
     kind: "publisher-table",
-    title: "Brand New Publishers",
-    subtitle: "Publishers activated for the first time in the current period.",
+    title: "Top 10 New Programs",
+    subtitle: "Programs joined or first active for the primary publisher in the current period.",
     bullets: [],
     kpis: [],
     tables: [
-      tableOrPlaceholder(brandNew, "Brand New Publishers", [
-        "Publisher",
-        "Segment",
-        "Current Sales",
-        "Current OV",
-        "CPA"
-      ])
+      buildTopNewProgramsTable(brandNew)
     ],
-    callout: "Brand-new publishers are not included in YoY comparisons until a prior-year baseline exists."
+    callout: "New programs are included where current-period activity exists and no prior-period baseline was found."
   });
 
   slides.push({
@@ -2783,7 +2775,7 @@ function addCallout(slide, deck, text, y, darkText = true) {
 }
 
 function addKpis(slide, deck, cards, origin, mode = "light") {
-  const visible = (cards || []).slice(0, 5);
+  const visible = (cards || []).slice(0, 6);
   if (!visible.length) return;
   const columns = 3;
   const cardW = 3.82;
@@ -3040,6 +3032,99 @@ function addWeeklyComboChart(slide, deck, chart, box) {
       fontFace: deck.theme.fonts.body,
       fontSize: 6.4,
       color: toColor(deck.theme.colors.muted),
+      margin: 0
+    });
+  });
+}
+
+function addMoversBarChart(slide, deck, chart, box) {
+  const rows = chart && Array.isArray(chart.rows) ? chart.rows.slice(0, 20) : [];
+  const values = rows.map((row) => Math.abs(Number(row.value) || 0));
+  const maxAbs = Math.max(...values, 1);
+  const labelW = 3.75;
+  const valueW = 0.92;
+  const plot = {
+    x: box.x + labelW,
+    y: box.y + 0.32,
+    w: box.w - labelW - valueW,
+    h: box.h - 0.45
+  };
+  const baselineX = plot.x + plot.w / 2;
+  const halfW = plot.w / 2 - 0.10;
+  const rowH = plot.h / Math.max(1, rows.length);
+  const barH = Math.min(0.13, Math.max(0.055, rowH * 0.48));
+
+  slide.addText(cleanInlineText(chart.title || "Publisher commission movers"), {
+    x: box.x,
+    y: box.y,
+    w: box.w,
+    h: 0.2,
+    align: "center",
+    fontFace: deck.theme.fonts.body,
+    fontSize: 8.8,
+    color: toColor(deck.theme.colors.muted),
+    margin: 0
+  });
+
+  for (let i = -2; i <= 2; i += 1) {
+    const x = baselineX + (i / 2) * halfW;
+    slide.addShape("line", {
+      x,
+      y: plot.y,
+      w: 0,
+      h: plot.h,
+      line: {
+        color: toColor(i === 0 ? "#7B8190" : "#E0E4EC"),
+        pt: i === 0 ? 0.8 : 0.45,
+        transparency: i === 0 ? 0 : 12
+      }
+    });
+  }
+
+  rows.forEach((row, index) => {
+    const y = plot.y + index * rowH + (rowH - barH) / 2;
+    const value = Number(row.value) || 0;
+    const barW = Math.max(0.02, (Math.abs(value) / maxAbs) * halfW);
+    const positive = value >= 0;
+    const barX = positive ? baselineX : baselineX - barW;
+    const displayText = cleanInlineText(row.display || String(value));
+
+    slide.addText(cleanInlineText(row.label || "-"), {
+      x: box.x,
+      y: y - 0.035,
+      w: labelW - 0.18,
+      h: Math.max(0.12, rowH),
+      align: "right",
+      valign: "mid",
+      fontFace: deck.theme.fonts.body,
+      fontSize: rows.length > 16 ? 5.8 : 6.4,
+      color: toColor(deck.theme.colors.muted),
+      margin: 0
+    });
+    slide.addShape("rect", {
+      x: barX,
+      y,
+      w: barW,
+      h: barH,
+      line: {
+        color: toColor(positive ? deck.theme.colors.accent : "#2F333B"),
+        pt: positive ? 0 : 0.55
+      },
+      fill: {
+        color: toColor(positive ? deck.theme.colors.accent : "#FFFFFF"),
+        transparency: positive ? 4 : 0
+      }
+    });
+    slide.addText(displayText, {
+      x: positive ? Math.min(plot.x + plot.w - valueW, baselineX + barW + 0.05) : Math.max(plot.x, baselineX - barW - valueW - 0.05),
+      y: y - 0.015,
+      w: valueW,
+      h: barH + 0.04,
+      align: positive ? "left" : "right",
+      valign: "mid",
+      fontFace: deck.theme.fonts.body,
+      fontSize: rows.length > 16 ? 5.7 : 6.2,
+      color: toColor(deck.theme.colors.ink),
       margin: 0
     });
   });
@@ -3327,36 +3412,83 @@ function renderSlide(slide, deck, spec, pageNumber) {
     const locale = deck.metadata.locale || "en-GB";
     const selectedPeriod = cleanInlineText(spec?.bullets?.[0] || deck.metadata.reportingPeriod || "Not specified");
     const selectedPeriodReadable = formatPeriodForSlide(selectedPeriod, locale);
+    const comparisonPeriodReadable = formatPeriodForSlide(deck.metadata.comparisonPeriod || "Not specified", locale);
+    const selectedPeriodParsed = parseIsoPeriod(selectedPeriod);
+    const selectedPeriodEndReadable = selectedPeriodParsed
+      ? formatLongDate(selectedPeriodParsed.end, locale)
+      : selectedPeriodReadable;
 
+    slide.addText("Current and YoY comparison windows", {
+      x: 0.72,
+      y: 1.38,
+      w: 11.3,
+      h: 0.26,
+      fontFace: deck.theme.fonts.body,
+      fontSize: 10.2,
+      color: toColor(deck.theme.colors.accent),
+      margin: 0
+    });
+    [
+      {
+        heading: uiLabel(deck, "currentPeriod", "Current Period"),
+        period: `${uiLabel(deck, "reportingPeriodPrefix", "Reporting Period")}: ${selectedPeriodReadable}`,
+        basis: `${uiLabel(deck, "dataAsOfPrefix", "Data as of")}: ${selectedPeriodEndReadable}`
+      },
+      {
+        heading: uiLabel(deck, "comparisonPeriodYoy", "Comparison Period (YoY)"),
+        period: `${uiLabel(deck, "comparisonPeriodPrefix", "Comparison Period")}: ${comparisonPeriodReadable}`,
+        basis: uiLabel(deck, "basisYoy", "Basis: Year-over-Year (YoY)")
+      }
+    ].forEach((block, index) => {
+      const x = index === 0 ? 0.72 : 6.55;
+      slide.addText(block.heading, {
+        x,
+        y: 1.92,
+        w: 5.0,
+        h: 0.34,
+        fontFace: deck.theme.fonts.heading,
+        fontSize: 16,
+        color: toColor(deck.theme.colors.ink),
+        margin: 0
+      });
+      slide.addText(block.period, {
+        x,
+        y: 2.50,
+        w: 5.25,
+        h: 0.26,
+        fontFace: deck.theme.fonts.body,
+        fontSize: 9.8,
+        color: toColor(deck.theme.colors.muted),
+        margin: 0
+      });
+      slide.addText(block.basis, {
+        x,
+        y: 2.84,
+        w: 5.25,
+        h: 0.26,
+        fontFace: deck.theme.fonts.body,
+        fontSize: 9.8,
+        color: toColor(deck.theme.colors.muted),
+        margin: 0
+      });
+    });
     slide.addShape("roundRect", {
-      x: 0.7,
-      y: 2.25,
+      x: 0.72,
+      y: 3.58,
       w: 11.95,
-      h: 2.1,
+      h: 0.88,
       radius: 0.05,
       line: { color: toColor(deck.theme.colors.highlight), pt: 0.5 },
       fill: { color: toColor(deck.theme.colors.highlight), transparency: 10 }
     });
-    slide.addText(uiLabel(deck, "reportingPeriodPrefix", "Reporting Period"), {
-      x: 0.95,
-      y: 2.75,
-      w: 11.35,
-      h: 0.3,
+    slide.addText(uiLabel(deck, "allFiguresStatement", "All figures are reported in {currency} unless otherwise stated. YoY variance is calculated as Current Period vs Comparison Period.").replace("{currency}", deck.metadata.currencyCode || ""), {
+      x: 0.98,
+      y: 3.89,
+      w: 11.2,
+      h: 0.24,
       fontFace: deck.theme.fonts.heading,
-      fontSize: 18,
+      fontSize: 9.7,
       color: toColor(deck.theme.colors.ink),
-      margin: 0
-    });
-    slide.addText(selectedPeriodReadable, {
-      x: 0.95,
-      y: 3.2,
-      w: 11.35,
-      h: 0.58,
-      fontFace: deck.theme.fonts.body,
-      fontSize: 22,
-      color: toColor(deck.theme.colors.ink),
-      bold: true,
-      align: "center",
       margin: 0
     });
     return;
@@ -3377,6 +3509,16 @@ function renderSlide(slide, deck, spec, pageNumber) {
         margin: 0
       });
     }
+    return;
+  }
+
+  if (spec.kind === "movers-bar-chart") {
+    addMoversBarChart(slide, deck, spec.chart, {
+      x: 0.58,
+      y: 1.42,
+      w: 12.18,
+      h: 5.75
+    });
     return;
   }
 

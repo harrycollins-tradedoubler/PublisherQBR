@@ -101,9 +101,10 @@ async function executiveSummaryUsesRequestedPublisherMetrics() {
   assert.deepEqual(labels, [
     "Conversions",
     "Total Order Value",
+    "Publisher Commission",
+    "Digital Wallet",
     "Total Earnings",
-    "Conversion Rate",
-    "Publisher Commission"
+    "Conversion Rate"
   ]);
   assert(labels.every((label) => !/roi|aov|average order value|sales/i.test(label)));
 }
@@ -166,7 +167,6 @@ async function programLevelAnalysisUsesPublisherCommissionHierarchy() {
     "Program ID",
     "Program Name",
     "Publisher Commission",
-    "Digital Wallet",
     "Total Earnings",
     "Conversions",
     "Order Value",
@@ -177,10 +177,41 @@ async function programLevelAnalysisUsesPublisherCommissionHierarchy() {
   assert.equal(table.rows[0][0], "2222");
   assert.equal(table.rows[0][1], "Higher Commission Retailer");
   assert.equal(table.rows[0][2], "£700");
+  assert.equal(table.rows[0][3], "£725");
   assert.equal(table.rows[1][0], "1111");
   assert.equal(table.rows[1][1], "Lower Commission Retailer");
+  assert(table.columns.every((label) => !/digital wallet/i.test(label)));
   assert(table.columns.every((label) => !/^clicks$/i.test(label)));
   assert(table.columns.every((label) => !/clicks yoy|^sales$|sales yoy|^commission$/i.test(label)));
+}
+
+async function moversShakersUsesPublisherCommissionBarChart() {
+  const deckSpec = await buildDeckSpec({
+    publisherTables: {
+      moversShakersCommissionChart: [
+        {
+          "Program Name": "Growth Retailer",
+          "Publisher Commission Change": "Â£8,000",
+          "Publisher Commission Change Value": "8000",
+          "Publisher Commission YoY %": "+80.0%"
+        },
+        {
+          "Program Name": "Decline Retailer",
+          "Publisher Commission Change": "-Â£5,000",
+          "Publisher Commission Change Value": "-5000",
+          "Publisher Commission YoY %": "-50.0%"
+        }
+      ]
+    }
+  });
+  const slide = deckSpec.slides.find((item) => item.id === "movers-shakers-publisher-commission");
+
+  assert.equal(slide.kind, "movers-bar-chart");
+  assert.equal(slide.chart.type, "movers-commission-bar");
+  assert.deepEqual(slide.chart.rows.map((row) => row.label), ["Growth Retailer", "Decline Retailer"]);
+  assert.equal(deckSpec.slides.some((item) => item.id === "movers-shakers-clicks"), false);
+  assert.equal(deckSpec.slides.some((item) => item.id === "movers-shakers-sales"), false);
+  assert.equal(deckSpec.slides.some((item) => item.id === "movers-shakers-ov"), false);
 }
 
 async function competitorAnalysisSlideUsesAnonymousComparisonTable() {
@@ -293,6 +324,7 @@ async function run() {
     executiveSummaryUsesRequestedPublisherMetrics,
     kpiSummaryTableUsesMetricRowsAndAddsRequestedMetrics,
     programLevelAnalysisUsesPublisherCommissionHierarchy,
+    moversShakersUsesPublisherCommissionBarChart,
     competitorAnalysisSlideUsesAnonymousComparisonTable,
     competitorAnalysisSlideIncludesWeeklyComboChart
   ];
