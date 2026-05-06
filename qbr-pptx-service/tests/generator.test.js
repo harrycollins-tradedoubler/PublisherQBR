@@ -17,6 +17,9 @@ async function buildDeckSpec(overrides = {}) {
         Row: "Recent",
         Conversions: "125",
         "Conv Rate": "5.0%",
+        Clicks: "2,500",
+        "Earnings per Click": "GBP 0.40",
+        "Earnings per Commission": "1.33x",
         "Order Value": "£12,500",
         "Publisher Commission": "£750",
         "Digital Wallet": "£250",
@@ -27,6 +30,9 @@ async function buildDeckSpec(overrides = {}) {
         Row: "Previous",
         Conversions: "100",
         "Conv Rate": "4.0%",
+        Clicks: "2,000",
+        "Earnings per Click": "GBP 0.40",
+        "Earnings per Commission": "1.14x",
         "Order Value": "£10,000",
         "Publisher Commission": "£700",
         "Digital Wallet": "£100",
@@ -37,6 +43,9 @@ async function buildDeckSpec(overrides = {}) {
         Row: "Difference",
         Conversions: "25",
         "Conv Rate": "1.0%",
+        Clicks: "500",
+        "Earnings per Click": "GBP 0.00",
+        "Earnings per Commission": "0.19x",
         "Order Value": "£2,500",
         "Publisher Commission": "£50",
         "Digital Wallet": "£150",
@@ -47,6 +56,9 @@ async function buildDeckSpec(overrides = {}) {
         Row: "Variance",
         Conversions: "+25.0%",
         "Conv Rate": "+25.0%",
+        Clicks: "+25.0%",
+        "Earnings per Click": "0.0%",
+        "Earnings per Commission": "+16.7%",
         "Order Value": "+25.0%",
         "Publisher Commission": "+7.1%",
         "Digital Wallet": "+150.0%",
@@ -96,21 +108,25 @@ async function executiveSummaryUsesRequestedPublisherMetrics() {
   assert(labels.every((label) => !/roi|aov|average order value|sales/i.test(label)));
 }
 
-async function kpiSummaryTableAddsEarningsAndDropsClicks() {
+async function kpiSummaryTableUsesMetricRowsAndAddsRequestedMetrics() {
   const deckSpec = await buildDeckSpec();
   const slide = deckSpec.slides.find((item) => item.id === "kpi-volume-conversion");
-  const metricNames = slide.tables[0].rows.map((row) => row[0]);
+  const table = slide.tables[0];
+  const metricNames = table.rows.map((row) => row[0]);
 
+  assert.deepEqual(table.columns, ["Metric", "Recent", "Previous", "Difference", "% Variance"]);
   assert.deepEqual(metricNames, [
     "Conversions",
     "Conversion Rate",
+    "Clicks",
+    "Earnings per Click",
+    "Earnings per Commission",
     "Total Order Value",
     "Publisher Commission",
     "Digital Wallet",
     "Total Earnings",
     "Active Programs"
   ]);
-  assert(metricNames.every((label) => !/^clicks$/i.test(label)));
   assert(metricNames.every((label) => !/roi|aov|average order value/i.test(label)));
 }
 
@@ -275,7 +291,7 @@ async function run() {
   const tests = [
     coverUsesPublisherPerformanceReviewTitle,
     executiveSummaryUsesRequestedPublisherMetrics,
-    kpiSummaryTableAddsEarningsAndDropsClicks,
+    kpiSummaryTableUsesMetricRowsAndAddsRequestedMetrics,
     programLevelAnalysisUsesPublisherCommissionHierarchy,
     competitorAnalysisSlideUsesAnonymousComparisonTable,
     competitorAnalysisSlideIncludesWeeklyComboChart

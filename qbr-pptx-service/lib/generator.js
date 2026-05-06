@@ -739,6 +739,9 @@ function normalizeMetrics(programYoYTable) {
   aliasMetric("totalearnings", "totalcommission", "Total Earnings");
   aliasMetric("digitalwallet", "digitalwallets", "Digital Wallet");
   aliasMetric("publcommission", "publishercommission", "Publisher Commission");
+  aliasMetric("earningsperclick", "epc", "Earnings per Click");
+  aliasMetric("earningspercommission", "earningsperpublcommission", "Earnings per Commission");
+  aliasMetric("earningspercommission", "earningsperpublishercommission", "Earnings per Commission");
 
   return {
     metrics,
@@ -2242,6 +2245,9 @@ function buildDeckSpec(input, theme) {
   const volumeRows = buildMetricRows(input.metricMap, [
     ["conversions", "Conversions"],
     ["convrate", "Conversion Rate"],
+    ["clicks", "Clicks"],
+    ["earningsperclick", "Earnings per Click"],
+    ["earningspercommission", "Earnings per Commission"],
     ["ordervalue", "Total Order Value"],
     ["publcommission", "Publisher Commission"],
     ["digitalwallet", "Digital Wallet"],
@@ -2312,7 +2318,7 @@ function buildDeckSpec(input, theme) {
     tables: [
       {
         title: "KPI Summary",
-        columns: ["Metric", "Current Period", "Prior Year", "Change", "% Variance"],
+        columns: ["Metric", "Recent", "Previous", "Difference", "% Variance"],
         rows: volumeRows.length ? volumeRows : [["-", "-", "-", "-", "-"]],
         dense: false
       }
