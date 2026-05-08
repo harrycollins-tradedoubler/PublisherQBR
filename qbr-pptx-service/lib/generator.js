@@ -67,7 +67,10 @@ const TABLE_KEY_MAP = {
   competitoranalysistable: "competitorAnalysisTable",
   competitorgroupsummary: "competitorAnalysisTable",
   competitorweeklypubcommchart: "competitorWeeklyPubCommChart",
-  weeklypubcommchart: "competitorWeeklyPubCommChart"
+  weeklypubcommchart: "competitorWeeklyPubCommChart",
+  topprogramscompetitorperformancetable: "topProgramsCompetitorPerformanceTable",
+  topprogramscompetitorperformance: "topProgramsCompetitorPerformanceTable",
+  competitorperformancetable: "topProgramsCompetitorPerformanceTable"
 };
 
 const PROGRAM_BREAKDOWN_COLUMNS = [
@@ -341,6 +344,28 @@ function cleanText(value, fallback = "") {
 
 function cleanInlineText(value, fallback = "") {
   return cleanText(value, fallback).replace(/\s+/g, " ").trim();
+}
+
+function publisherAnalysisToProgramContext(value) {
+  let text = cleanInlineText(value || "");
+  if (!text) return "";
+
+  const protectedPhrases = [];
+  text = text.replace(/\b(publisher commission|publ commission|pub comm)\b/gi, (match) => {
+    const token = `__QBR_METRIC_${protectedPhrases.length}__`;
+    protectedPhrases.push([token, match]);
+    return token;
+  });
+
+  text = text
+    .replace(/\b[Pp]ublishers\b/g, (match) => (match[0] === "P" ? "Programs" : "programs"))
+    .replace(/\b[Pp]ublisher\b/g, (match) => (match[0] === "P" ? "Program" : "program"));
+
+  protectedPhrases.forEach(([token, phrase]) => {
+    text = text.replaceAll(token, phrase);
+  });
+
+  return cleanInlineText(text);
 }
 
 function normalizeLanguageCode(value) {
@@ -1403,7 +1428,8 @@ function buildMoversCommissionBarChart(table, locale = "en-GB") {
   const down = parsedRows
     .filter((row) => row.value < 0)
     .sort((a, b) => a.value - b.value)
-    .slice(0, 10);
+    .slice(0, 10)
+    .reverse();
   const chartRows = up.concat(down);
 
   return {
@@ -1510,6 +1536,43 @@ function buildCompetitorAnalysisTable(table) {
   };
 }
 
+function buildTopProgramsCompetitorPerformanceTable(table) {
+  const fallbackColumns = ["Program Name", "Primary Publisher", "Comp. A", "Comp. B", "Comp. C", "Comp. D"];
+  if (!table || !Array.isArray(table.rows) || !table.rows.length) {
+    return {
+      title: "Top Programs Competitor Performance",
+      columns: fallbackColumns,
+      rows: [fallbackColumns.map(() => "-")],
+      colAlign: ["left", "center", "center", "center", "center", "center"],
+      colW: [3.9, 1.65, 1.35, 1.35, 1.35, 1.35],
+      primaryHighlightColumn: 1,
+      dense: true
+    };
+  }
+
+  const sourceColumns = Array.isArray(table.columns) ? table.columns : Object.keys(table.rows[0] || {});
+  const programColumn = sourceColumns.find((column) => /^program\s*name$/i.test(cleanInlineText(column)))
+    || sourceColumns.find((column) => /program/i.test(cleanInlineText(column)))
+    || sourceColumns[0]
+    || "Program Name";
+  const valueColumns = sourceColumns.filter((column) => column !== programColumn && column !== "_columns").slice(0, 5);
+  const columns = ["Program Name", ...valueColumns];
+  const rows = table.rows.slice(0, 10).map((row) => [
+    cleanInlineText(row[programColumn] || "-"),
+    ...valueColumns.map((column) => cleanInlineText(row[column] || "0%"))
+  ]);
+
+  return {
+    title: "Top Programs Competitor Performance",
+    columns,
+    rows,
+    colAlign: ["left", ...valueColumns.map(() => "center")],
+    colW: [3.9, 1.65, 1.35, 1.35, 1.35, 1.35].slice(0, columns.length),
+    primaryHighlightColumn: 1,
+    dense: true
+  };
+}
+
 function buildWeeklyPubCommComboChart(table) {
   if (!table || !Array.isArray(table.rows) || !table.rows.length) return null;
 
@@ -1537,7 +1600,7 @@ function buildWeeklyPubCommComboChart(table) {
 
 function buildPublisherOverviewBullets(input) {
   const tidyObservationLine = (line) => {
-    let text = cleanInlineText(line || "");
+    let text = publisherAnalysisToProgramContext(line || "");
     text = text.replace(/^key observations?\s*[:\-]\s*/i, "");
     text = text
       .replace(/\s*-\s*I\s+recorded\b/gi, " recorded")
@@ -1608,37 +1671,37 @@ function buildPublisherOverviewBullets(input) {
   const obs = [];
   const topGrowthRow = growth?.rows?.[0];
   if (topGrowthRow) {
-    const pub = cleanPublisherName(topGrowthRow.Publisher || "Top growth publisher");
+    const pub = cleanPublisherName(topGrowthRow["Program Name"] || topGrowthRow.Program || topGrowthRow.Publisher || "Top growth program");
     const seg = cleanInlineText(topGrowthRow.Segment || "N/A");
     const ovDelta = cleanInlineText(topGrowthRow["OV YoY Change"] || "N/A");
     const ovPct = cleanInlineText(topGrowthRow["OV YoY %"] || "N/A");
-    obs.push(`${pub} drove the strongest YoY uplift (${seg}), adding ${ovDelta} in OV (${ovPct}).`);
+    obs.push(`${pub} was the strongest YoY uplift program (${seg}), adding ${ovDelta} in OV (${ovPct}).`);
   }
 
   const topDeclineRow = decline?.rows?.[0];
   if (topDeclineRow) {
-    const pub = cleanPublisherName(topDeclineRow.Publisher || "Top declining publisher");
+    const pub = cleanPublisherName(topDeclineRow["Program Name"] || topDeclineRow.Program || topDeclineRow.Publisher || "Top declining program");
     const seg = cleanInlineText(topDeclineRow.Segment || "N/A");
     const ovDelta = cleanInlineText(topDeclineRow["OV YoY Change"] || "N/A");
     const ovPct = cleanInlineText(topDeclineRow["OV YoY %"] || "N/A");
-    obs.push(`${pub} recorded the largest decline (${seg}), with OV movement ${ovDelta} (${ovPct}).`);
+    obs.push(`${pub} was the largest declining program (${seg}), with OV movement ${ovDelta} (${ovPct}).`);
   }
 
   if (brandNew?.rows?.length) {
     const totalOv = brandNew.rows.reduce((sum, row) => sum + (parseNumber(row["Current OV"]) || 0), 0);
-    obs.push(`${brandNew.rows.length} brand-new publishers were activated, contributing ${getCurrencySymbol(input.currencyCode)}${Math.round(totalOv).toLocaleString(input.locale || "en-GB")} in combined OV.`);
+    obs.push(`${brandNew.rows.length} brand-new programs were activated, contributing ${getCurrencySymbol(input.currencyCode)}${Math.round(totalOv).toLocaleString(input.locale || "en-GB")} in combined OV.`);
   }
 
   if (current?.rows?.length) {
     const top2 = current.rows.slice(0, 2).map((row) => ({
-      name: cleanPublisherName(row.Publisher || "Publisher"),
+      name: cleanPublisherName(row["Program Name"] || row.Program || row.Publisher || "Program"),
       ov: parseNumber(row["Order Value"] || row["Current OV"] || row["Current Order Value"])
     }));
     if (top2.length === 2) {
       const top2Ov = top2.reduce((sum, item) => sum + (item.ov || 0), 0);
       const totalOv = (segment?.rows || []).reduce((sum, row) => sum + (parseNumber(row["Total OV"]) || 0), 0);
       const share = totalOv > 0 ? ` (${((top2Ov / totalOv) * 100).toFixed(1)}% of programme OV)` : "";
-      obs.push(`Publisher concentration remains high: ${top2[0].name} and ${top2[1].name} account for ${getCurrencySymbol(input.currencyCode)}${Math.round(top2Ov).toLocaleString(input.locale || "en-GB")}${share}.`);
+      obs.push(`Program concentration remains high: ${top2[0].name} and ${top2[1].name} account for ${getCurrencySymbol(input.currencyCode)}${Math.round(top2Ov).toLocaleString(input.locale || "en-GB")}${share}.`);
     }
   }
 
@@ -1646,10 +1709,10 @@ function buildPublisherOverviewBullets(input) {
   if (computed.length) return computed;
 
   return [
-    "Driver not confirmed from available segment and publisher data.",
-    "No stable top publisher concentration signal available in current extract.",
-    "New publisher contribution could not be quantified from available data.",
-    "Review source publisher tables to confirm movement drivers."
+    "Driver not confirmed from available segment and program data.",
+    "No stable top program concentration signal available in current extract.",
+    "New program contribution could not be quantified from available data.",
+    "Review source program tables to confirm movement drivers."
   ];
 }
 
@@ -1659,7 +1722,7 @@ function buildSegmentPerformanceBlocks(input) {
     return [
       "Segment-level trend not available from current data extract.",
       "Use segment table to confirm YoY movement drivers before actioning.",
-      "Cross-check top publishers per segment for concentration effects."
+      "Cross-check top programs per segment for concentration effects."
     ];
   }
 
@@ -2117,25 +2180,25 @@ function buildKpiAnalysisBullets(input) {
 
   const preferredAi = aiCandidates
     .filter((line) => !looksLikeRawKpiSnapshot(line) && !looksLikeProgramListing(line))
-    .map((line) => cleanInlineText(line))
+    .map((line) => publisherAnalysisToProgramContext(line))
     .filter((line) => !/^driver not confirmed from available data\.?$/i.test(line))
     .filter((line) => !/^detail not available from current extract\.?$/i.test(line))
     .filter(Boolean);
 
   const declineRows = (input.tables.topDecliningPublishers?.rows || []).slice(0, 3);
   const declineList = declineRows
-    .map((row) => `${cleanPublisherLabel(row.Publisher || "Publisher")} (${cleanInlineText(row["Sales YoY %"] || row["YoY Change"] || "N/A")})`)
+    .map((row) => `${cleanPublisherLabel(row["Program Name"] || row.Program || row.Publisher || "Program")} (${cleanInlineText(row["Sales YoY %"] || row["YoY Change"] || "N/A")})`)
     .filter(Boolean)
     .join(", ");
 
   const bullets = [
-    `Conversion Rate Movement: ${metricSentence("Conversion rate", conv)} Conversions ${directionWord(conversions?.varianceValue)} ${conversions?.variance || "N/A"} (${conversions?.difference || "-"}), showing how efficiently the publisher converted traffic into outcomes.`,
-    `Conversion Volume: Total conversions ${directionWord(conversions?.varianceValue)} ${conversions?.variance || "N/A"} (${conversions?.difference || "-"}). ${declineList ? `Largest declines came from ${declineList}.` : "Largest declining publisher contribution requires confirmation from mover tables."}`,
+    `Conversion Rate Movement: ${metricSentence("Conversion rate", conv)} Conversions ${directionWord(conversions?.varianceValue)} ${conversions?.variance || "N/A"} (${conversions?.difference || "-"}), showing how efficiently programs converted traffic into outcomes.`,
+    `Conversion Volume: Total conversions ${directionWord(conversions?.varianceValue)} ${conversions?.variance || "N/A"} (${conversions?.difference || "-"}). ${declineList ? `Largest declining programs were ${declineList}.` : "Largest declining program contribution requires confirmation from mover tables."}`,
     `Order Value: ${metricSentence("Total order value", ov)} Value generation moved alongside conversion volume and earnings performance.`,
-    `Publisher Commission: ${metricSentence("Publisher commission", publisherCommission)} Commission remains the core publisher earning component.`,
+    `Publisher Commission: ${metricSentence("Publisher commission", publisherCommission)} Commission remains the core earning component for the publisher.`,
     `Total Earnings: ${metricSentence("Total earnings", totalEarnings)} Digital wallet contribution was ${digitalWallet?.current || "-"} (${digitalWallet?.variance || "N/A"}), so total earnings combine commission and wallet income.`
   ];
-  const generated = bullets.map((line) => cleanInlineText(line)).filter(Boolean);
+  const generated = bullets.map((line) => publisherAnalysisToProgramContext(line)).filter(Boolean);
 
   const topicTitleByKey = {
     conversion: "Conversion Rate Movement",
@@ -2234,7 +2297,7 @@ function buildRiskRows(input) {
   const sourceLines = [];
   const appendLines = (lines) => {
     (lines || []).forEach((line) => {
-      const text = cleanInlineText(line);
+      const text = publisherAnalysisToProgramContext(line);
       if (!text) return;
       if (sourceLines.some((existing) => existing.toLowerCase() === text.toLowerCase())) return;
       sourceLines.push(text);
@@ -2247,7 +2310,7 @@ function buildRiskRows(input) {
 
   const inferRiskLabel = (text) => {
     const lower = cleanInlineText(text).toLowerCase();
-    if (/(concentration|top\s+\d+\s+publisher|dependency|dependenc)/.test(lower)) return "Publisher concentration risk";
+    if (/(concentration|top\s+\d+\s+program|dependency|dependenc)/.test(lower)) return "Program concentration risk";
     if (/\bcpa\b|commission|cost per acquisition/.test(lower)) return "Rising CPA trend";
     if (/click|traffic|volume decline/.test(lower)) return "Traffic decline";
     if (/aov|order value|ov /.test(lower)) return "Order value mix volatility";
@@ -2275,9 +2338,9 @@ function buildRiskRows(input) {
 
   return [
     [
-      "Publisher concentration risk",
+      "Program concentration risk",
       "High",
-      "Publisher concentration remains elevated; diversify publisher mix and reduce reliance on the top contributors."
+      "Program concentration remains elevated; diversify program mix and reduce reliance on the top contributors."
     ],
     [
       "Rising CPA trend",
@@ -2287,7 +2350,7 @@ function buildRiskRows(input) {
     [
       "Traffic decline",
       "Medium",
-      "Investigate traffic source quality and reactivate declining publishers with the strongest historical contribution."
+      "Investigate traffic source quality and reactivate declining programs with the strongest historical contribution."
     ]
   ];
 }
@@ -2336,6 +2399,7 @@ function buildDeckSpec(input, theme) {
   const moversCommissionChart = buildMoversCommissionBarChart(input.tables.moversCommissionChart || input.tables.moversCommission, input.locale);
   const competitorAnalysis = buildCompetitorAnalysisTable(input.tables.competitorAnalysisTable);
   const competitorWeeklyChart = buildWeeklyPubCommComboChart(input.tables.competitorWeeklyPubCommChart);
+  const topProgramsCompetitorPerformance = buildTopProgramsCompetitorPerformanceTable(input.tables.topProgramsCompetitorPerformanceTable);
   const kpiAnalysisBullets = buildKpiAnalysisBullets(input);
   const publisherOverviewBullets = buildPublisherOverviewBullets(input);
   const segmentPerformanceBlocks = buildSegmentPerformanceBlocks(input);
@@ -2433,19 +2497,6 @@ function buildDeckSpec(input, theme) {
   });
 
   slides.push({
-    id: "brand-new-publishers",
-    kind: "publisher-table",
-    title: "Top 10 New Programs",
-    subtitle: "Programs joined or first active for the primary publisher in the current period.",
-    bullets: [],
-    kpis: [],
-    tables: [
-      buildTopNewProgramsTable(brandNew)
-    ],
-    callout: "New programs are included where current-period activity exists and no prior-period baseline was found."
-  });
-
-  slides.push({
     id: "competitor-analysis",
     kind: "competitor-analysis",
     title: "Competitor Analysis",
@@ -2458,14 +2509,26 @@ function buildDeckSpec(input, theme) {
   });
 
   slides.push({
-    id: "sales-growth-signals",
-    kind: "sales-growth-signals-blue",
-    title: "Sales Growth Signals",
-    subtitle: `Factual observations from the data relevant to the programme's sales performance - ${input.reportingPeriod}.`,
+    id: "top-programs-competitor-performance",
+    kind: "competitor-performance-table",
+    title: "Top Programs Competitor Performance",
+    subtitle: "Share of publisher commission by program across the primary publisher and four comparison publishers.",
     bullets: [],
-    signals: salesGrowthSignals,
     kpis: [],
-    tables: []
+    tables: [topProgramsCompetitorPerformance]
+  });
+
+  slides.push({
+    id: "brand-new-publishers",
+    kind: "publisher-table",
+    title: "Top 10 New Programs",
+    subtitle: "Programs joined or first active for the primary publisher in the current period.",
+    bullets: [],
+    kpis: [],
+    tables: [
+      buildTopNewProgramsTable(brandNew)
+    ],
+    callout: "New programs are included where current-period activity exists and no prior-period baseline was found."
   });
 
   slides.push({
@@ -3088,6 +3151,7 @@ function addMoversBarChart(slide, deck, chart, box) {
     const positive = value >= 0;
     const barX = positive ? baselineX : baselineX - barW;
     const displayText = cleanInlineText(row.display || String(value));
+    const barColor = positive ? deck.theme.colors.accent : deck.theme.colors.accentAlt;
 
     slide.addText(cleanInlineText(row.label || "-"), {
       x: box.x,
@@ -3107,11 +3171,11 @@ function addMoversBarChart(slide, deck, chart, box) {
       w: barW,
       h: barH,
       line: {
-        color: toColor(positive ? deck.theme.colors.accent : "#2F333B"),
-        pt: positive ? 0 : 0.55
+        color: toColor(barColor),
+        pt: 0
       },
       fill: {
-        color: toColor(positive ? deck.theme.colors.accent : "#FFFFFF"),
+        color: toColor(barColor),
         transparency: positive ? 4 : 0
       }
     });
@@ -3167,7 +3231,7 @@ function addTable(slide, deck, table, box, mode = "light") {
   const bodyRows = table.rows.map((row, index) => {
     const firstCell = cleanInlineText(row[0] || "");
     const isSectionRow = /^Top\s+\d+\s+(Up|Down)$/i.test(firstCell);
-    const rowFill = isSectionRow
+    const defaultRowFill = isSectionRow
       ? "#E5E8EF"
       : index % 2 === 0
         ? "#F4F5F7"
@@ -3182,7 +3246,9 @@ function addTable(slide, deck, table, box, mode = "light") {
         color: isSectionRow
           ? toColor(deck.theme.colors.ink)
           : cellTextColor(table, table.columns[cellIndex] || "", value, deck),
-        fill: { color: toColor(rowFill) },
+        fill: {
+          color: toColor(cellIndex === table.primaryHighlightColumn ? "#C8F7D2" : defaultRowFill)
+        },
         margin: 0.045,
         align: columnAlignments[cellIndex] || "left",
         valign: "mid"
@@ -3931,11 +3997,11 @@ function renderSlide(slide, deck, spec, pageNumber) {
     return;
   }
 
-  if (spec.kind === "kpi-table" || spec.kind === "publisher-table" || spec.kind === "program-breakdown" || spec.kind === "appendix" || spec.kind === "risks-dependencies") {
+  if (spec.kind === "kpi-table" || spec.kind === "publisher-table" || spec.kind === "competitor-performance-table" || spec.kind === "program-breakdown" || spec.kind === "appendix" || spec.kind === "risks-dependencies") {
     const isProgramTable = spec.kind === "kpi-table" || spec.kind === "program-breakdown";
-    const tableY = isProgramTable ? 1.78 : 1.95;
+    const tableY = isProgramTable ? 1.78 : (spec.kind === "competitor-performance-table" ? 1.86 : 1.95);
     const hasFooterNote = spec.kind === "kpi-table" && Boolean(cleanInlineText(spec.footerNote || ""));
-    const tableH = isProgramTable ? (hasFooterNote ? 5.05 : 5.55) : (spec.kind === "appendix" ? 5.15 : 4.85);
+    const tableH = isProgramTable ? (hasFooterNote ? 5.05 : 5.55) : (spec.kind === "appendix" ? 5.15 : (spec.kind === "competitor-performance-table" ? 5.05 : 4.85));
     let renderedTable = null;
     if (spec.tables && spec.tables[0]) {
       renderedTable = addTable(slide, deck, spec.tables[0], {

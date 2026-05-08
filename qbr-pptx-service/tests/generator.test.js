@@ -1,8 +1,9 @@
 const assert = require("node:assert/strict");
+const JSZip = require("jszip");
 
 const { generatePresentation } = require("../lib/generator");
 
-async function buildDeckSpec(overrides = {}) {
+async function buildPresentationResult(overrides = {}) {
   const payload = {
     client: "topcashback",
     deckTitle: "QBR - topcashback",
@@ -81,7 +82,11 @@ async function buildDeckSpec(overrides = {}) {
     ...overrides
   };
 
-  const result = await generatePresentation(payload);
+  return generatePresentation(payload);
+}
+
+async function buildDeckSpec(overrides = {}) {
+  const result = await buildPresentationResult(overrides);
   return result.deckSpec;
 }
 
@@ -214,6 +219,78 @@ async function moversShakersUsesPublisherCommissionBarChart() {
   assert.equal(deckSpec.slides.some((item) => item.id === "movers-shakers-ov"), false);
 }
 
+async function moversShakersDisplaysDeclinersSmallestLossFirst() {
+  const deckSpec = await buildDeckSpec({
+    publisherTables: {
+      moversShakersCommissionChart: [
+        {
+          "Program Name": "Growth Retailer",
+          "Publisher Commission Change": "GBP 8,000",
+          "Publisher Commission Change Value": "8000",
+          "Publisher Commission YoY %": "+80.0%"
+        },
+        {
+          "Program Name": "Morrisons Grocery",
+          "Publisher Commission Change": "-GBP 251,731",
+          "Publisher Commission Change Value": "-251731",
+          "Publisher Commission YoY %": "-54.9%"
+        },
+        {
+          "Program Name": "Travel Republic",
+          "Publisher Commission Change": "-GBP 94,575",
+          "Publisher Commission Change Value": "-94575",
+          "Publisher Commission YoY %": "-100.0%"
+        },
+        {
+          "Program Name": "Lenstore UK Contact Lenses",
+          "Publisher Commission Change": "-GBP 8,932",
+          "Publisher Commission Change Value": "-8932",
+          "Publisher Commission YoY %": "-52.5%"
+        }
+      ]
+    }
+  });
+  const slide = deckSpec.slides.find((item) => item.id === "movers-shakers-publisher-commission");
+
+  assert.deepEqual(slide.chart.rows.map((row) => row.label), [
+    "Growth Retailer",
+    "Lenstore UK Contact Lenses",
+    "Travel Republic",
+    "Morrisons Grocery"
+  ]);
+}
+
+async function renderedMoversShakersNegativeBarsUseRedFill() {
+  const result = await buildPresentationResult({
+    themeOverrides: {
+      colors: {
+        accentAlt: "#D93025"
+      }
+    },
+    publisherTables: {
+      moversShakersCommissionChart: [
+        {
+          "Program Name": "Growth Retailer",
+          "Publisher Commission Change": "GBP 8,000",
+          "Publisher Commission Change Value": "8000",
+          "Publisher Commission YoY %": "+80.0%"
+        },
+        {
+          "Program Name": "Decline Retailer",
+          "Publisher Commission Change": "-GBP 5,000",
+          "Publisher Commission Change Value": "-5000",
+          "Publisher Commission YoY %": "-50.0%"
+        }
+      ]
+    }
+  });
+  const moversSlideIndex = result.deckSpec.slides.findIndex((slide) => slide.id === "movers-shakers-publisher-commission") + 1;
+  const zip = await JSZip.loadAsync(result.buffer);
+  const slideXml = await zip.file(`ppt/slides/slide${moversSlideIndex}.xml`).async("string");
+
+  assert.match(slideXml, /<a:srgbClr val="D93025"/);
+}
+
 async function competitorAnalysisSlideUsesAnonymousComparisonTable() {
   const deckSpec = await buildDeckSpec({
     publisherTables: {
@@ -318,6 +395,146 @@ async function competitorAnalysisSlideIncludesWeeklyComboChart() {
   assert.deepEqual(slide.chart.series[1].values, [18500, 21000]);
 }
 
+async function productionPublisherRequestKeepsFullPublisherSlideSet() {
+  const deckSpec = await buildDeckSpec({
+    slideBlueprint: [
+      { slide: 1, key: "cover", title: "Performance Review Cover" },
+      { slide: 2, key: "reporting_period", title: "Reporting Period" },
+      { slide: 3, key: "kpi_tiles", title: "Executive KPI Tiles" },
+      { slide: 4, key: "kpi_summary_table", title: "KPI Summary Table" },
+      { slide: 5, key: "program_level_analysis", title: "Program Level Analysis" },
+      { slide: 6, key: "movers_commission_chart", title: "Movers & Shakers - Publisher Commission" },
+      { slide: 7, key: "kpi_highlights", title: "KPI Highlights" },
+      { slide: 8, key: "competitor_analysis", title: "Competitor Analysis" },
+      { slide: 9, key: "brand_new_programs", title: "Top 10 Newly Activated Programs" },
+      { slide: 10, key: "sales_growth_risk_dependencies", title: "Conversion Growth Signals & Risk and Dependencies" },
+      { slide: 11, key: "thank_you", title: "Thank You" }
+    ],
+    targetSlides: 11,
+    publisherTables: {
+      moversShakersCommissionChart: [
+        {
+          "Program Name": "Growth Retailer",
+          "Publisher Commission Change": "GBP 8,000",
+          "Publisher Commission Change Value": "8000",
+          "Publisher Commission YoY %": "+80.0%"
+        }
+      ],
+      competitorAnalysisTable: [
+        {
+          "Competitor Group Summary": "Programs with Pub Comm",
+          "Your Site": "180",
+          "Publisher 1": "115",
+          "Publisher 2": "119",
+          "Publisher 3": "36",
+          "Publisher 4": "46",
+          "Distinct comp. prog. #": "150"
+        }
+      ],
+      competitorWeeklyPubCommChart: [
+        {
+          Week: "2026-01-05",
+          "Your Site": "GBP 80,000",
+          "Publisher 1": "GBP 18,500"
+        },
+        {
+          Week: "2026-01-12",
+          "Your Site": "GBP 75,000",
+          "Publisher 1": "GBP 21,000"
+        }
+      ],
+      topProgramsCompetitorPerformanceTable: [
+        {
+          "Program Name": "Morrisons Grocery",
+          TopCashback: "66%",
+          "Comp. A": "8%",
+          "Comp. B": "22%",
+          "Comp. C": "4%",
+          "Comp. D": "0%"
+        }
+      ],
+      salesGrowthSignalsTable: [
+        {
+          "Program Name": "Growth Retailer",
+          "Conversions YoY Change": "25",
+          "Conversions YoY %": "+25.0%",
+          "Total Earnings YoY Change": "GBP 200",
+          "Total Earnings YoY %": "+25.0%"
+        }
+      ],
+      riskDependenciesTable: [
+        {
+          "Program Name": "Decline Retailer",
+          "Risk Type": "YoY decline",
+          Evidence: "Conversions -20, total earnings -GBP 500",
+          Priority: "High"
+        }
+      ],
+      brandNewProgramsTable: [
+        {
+          "Program ID": "3333",
+          "Program Name": "New Retailer",
+          Conversions: "10",
+          "Order Value": "GBP 1,000",
+          "Publisher Commission": "GBP 100",
+          "Digital Wallet": "GBP 0",
+          "Total Earnings": "GBP 100"
+        }
+      ]
+    }
+  });
+  const ids = deckSpec.slides.map((slide) => slide.id);
+
+  assert(ids.includes("executive-summary"));
+  assert(ids.includes("movers-shakers-publisher-commission"));
+  assert(ids.includes("competitor-analysis"));
+  assert(ids.includes("top-programs-competitor-performance"));
+  assert.equal(ids.includes("sales-growth-signals"), false);
+  assert(ids.includes("risks-dependencies"));
+  assert(ids.includes("brand-new-publishers"));
+  assert(ids.includes("thank-you"));
+  assert.deepEqual(
+    ids.slice(ids.indexOf("competitor-analysis"), ids.indexOf("brand-new-publishers") + 1),
+    ["competitor-analysis", "top-programs-competitor-performance", "brand-new-publishers"]
+  );
+  assert.deepEqual(ids.slice(-2), ["risks-dependencies", "thank-you"]);
+
+  const competitorPerformanceSlide = deckSpec.slides.find((slide) => slide.id === "top-programs-competitor-performance");
+  const table = competitorPerformanceSlide.tables[0];
+  assert.equal(table.primaryHighlightColumn, 1);
+  assert.deepEqual(table.columns, ["Program Name", "TopCashback", "Comp. A", "Comp. B", "Comp. C", "Comp. D"]);
+  assert.deepEqual(table.rows[0], ["Morrisons Grocery", "66%", "8%", "22%", "4%", "0%"]);
+}
+
+async function publisherQbrAnalysisUsesProgramLanguage() {
+  const deckSpec = await buildDeckSpec({
+    publisherOverviewObservations: [
+      "This publisher was the biggest contributor to the decline and should be reviewed."
+    ],
+    publisherTables: {
+      topDecliningPublishers: [
+        {
+          Publisher: "Morrisons Grocery",
+          Segment: "Cashback",
+          "Sales YoY %": "-54.9%",
+          "OV YoY Change": "-GBP 251,731",
+          "OV YoY %": "-54.9%"
+        }
+      ]
+    }
+  });
+  const kpiSlide = deckSpec.slides.find((slide) => slide.id === "kpi-highlights");
+  const riskSlide = deckSpec.slides.find((slide) => slide.id === "risks-dependencies");
+  const analysisText = [
+    ...kpiSlide.bullets,
+    ...riskSlide.tables[0].rows.flat()
+  ].join(" ");
+  const withoutMetricName = analysisText.replace(/publisher commission/gi, "");
+
+  assert.match(analysisText, /program/i);
+  assert.doesNotMatch(withoutMetricName, /\bpublishers?\b/i);
+}
+
 async function run() {
   const tests = [
     coverUsesPublisherPerformanceReviewTitle,
@@ -325,8 +542,12 @@ async function run() {
     kpiSummaryTableUsesMetricRowsAndAddsRequestedMetrics,
     programLevelAnalysisUsesPublisherCommissionHierarchy,
     moversShakersUsesPublisherCommissionBarChart,
+    moversShakersDisplaysDeclinersSmallestLossFirst,
+    renderedMoversShakersNegativeBarsUseRedFill,
     competitorAnalysisSlideUsesAnonymousComparisonTable,
-    competitorAnalysisSlideIncludesWeeklyComboChart
+    competitorAnalysisSlideIncludesWeeklyComboChart,
+    productionPublisherRequestKeepsFullPublisherSlideSet,
+    publisherQbrAnalysisUsesProgramLanguage
   ];
 
   for (const test of tests) {
