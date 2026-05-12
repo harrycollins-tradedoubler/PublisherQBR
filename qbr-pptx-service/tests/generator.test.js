@@ -92,10 +92,24 @@ async function buildDeckSpec(overrides = {}) {
 
 async function coverUsesPublisherPerformanceReviewTitle() {
   const deckSpec = await buildDeckSpec();
-  assert.equal(deckSpec.slides[0].title, "topcashback performance review");
+  assert.equal(deckSpec.slides[0].title, "Topcashback Performance Review");
   assert.doesNotMatch(deckSpec.slides[0].title, /affiliate program/i);
   assert.doesNotMatch(deckSpec.slides[0].summary, /affiliate program/i);
   assert.doesNotMatch(JSON.stringify(deckSpec), /affiliate program/i);
+}
+
+async function renderedCoverUsesWhiteTdLogoAsset() {
+  const result = await buildPresentationResult();
+  const zip = await JSZip.loadAsync(result.buffer);
+  const slideXml = await zip.file("ppt/slides/slide1.xml").async("string");
+  const slideRels = await zip.file("ppt/slides/_rels/slide1.xml.rels").async("string");
+  const mediaFiles = Object.keys(zip.files).filter((name) => /^ppt\/media\/image[-\d]+\.png$/.test(name));
+  const imageRels = [...slideRels.matchAll(/Target="\.\.\/media\/image[-\d]+\.png"/g)];
+
+  assert.match(slideXml, /<p:pic/);
+  assert(imageRels.length >= 2);
+  assert(mediaFiles.length >= 2);
+  assert.doesNotMatch(slideXml, /<a:t>td<\/a:t>|tradedoubler/i);
 }
 
 async function executiveSummaryUsesRequestedPublisherMetrics() {
@@ -136,6 +150,99 @@ async function kpiSummaryTableUsesMetricRowsAndAddsRequestedMetrics() {
   assert(metricNames.every((label) => !/roi|aov|average order value/i.test(label)));
 }
 
+async function programActivationSnapshotSlideFollowsKpiSummary() {
+  const deckSpec = await buildDeckSpec({
+    publisherTables: {
+      programActivationSnapshotTable: [
+        { Metric: "Joined programs", Total: "337", New: "148", "New %": "44%" },
+        { Metric: "With clicks", Total: "257", New: "82", "New %": "32%" },
+        { Metric: "With pub commission", Total: "180", New: "50", "New %": "28%" },
+        { Metric: "Inactive", Total: "157", New: "98", "New %": "62%" }
+      ]
+    }
+  });
+  const ids = deckSpec.slides.map((slide) => slide.id);
+  const kpiIndex = ids.indexOf("kpi-volume-conversion");
+  const activationIndex = ids.indexOf("program-activation-snapshot");
+  const programAnalysisIndex = ids.indexOf("kpi-cost-roi");
+  const slide = deckSpec.slides[activationIndex];
+
+  assert.notEqual(activationIndex, -1);
+  assert.equal(activationIndex, kpiIndex + 1);
+  assert.equal(programAnalysisIndex, activationIndex + 1);
+  assert.equal(slide.kind, "program-activation-snapshot");
+  assert.deepEqual(slide.activationSnapshot.map((item) => item.label), [
+    "Joined programs",
+    "With clicks",
+    "Pub commission",
+    "Inactive"
+  ]);
+  assert.equal(slide.activationSnapshot[0].total, "337");
+  assert.equal(slide.activationSnapshot[3].newPercent, "62%");
+  assert(slide.activationSnapshot.every((item) => !("tag" in item)));
+}
+
+async function renderedActivationSnapshotUsesTdLineGridStyle() {
+  const result = await buildPresentationResult({
+    publisherTables: {
+      programActivationSnapshotTable: [
+        { Metric: "Joined programs", Total: "337", New: "148", "New %": "44%" },
+        { Metric: "With clicks", Total: "257", New: "82", "New %": "32%" },
+        { Metric: "With pub commission", Total: "180", New: "50", "New %": "28%" },
+        { Metric: "Inactive", Total: "157", New: "98", "New %": "62%" }
+      ]
+    }
+  });
+  const activationSlideIndex = result.deckSpec.slides.findIndex((slide) => slide.id === "program-activation-snapshot") + 1;
+  const zip = await JSZip.loadAsync(result.buffer);
+  const slideXml = await zip.file(`ppt/slides/slide${activationSlideIndex}.xml`).async("string");
+
+  assert.match(slideXml, /Activation Status/);
+  assert.match(slideXml, /Joined programs/);
+  assert.match(slideXml, /With clicks/);
+  assert.match(slideXml, /Pub commission/);
+  assert.match(slideXml, /Inactive/);
+  assert.match(slideXml, /<a:srgbClr val="FFFFFF"/);
+  assert.match(slideXml, /algn="ctr"/);
+  assert.doesNotMatch(slideXml, /PUBLISHER KPI FOLLOW-UP|Base|Traffic|Earning|Watch/);
+  assert.doesNotMatch(slideXml, /Current period|Primary publisher/);
+  assert.doesNotMatch(slideXml, /071E5C|123D8F/);
+  assert.doesNotMatch(slideXml, /\sb="1"/);
+}
+
+async function renderedSlideUtilityTextIsRemovedAndTableTitlesAreCentered() {
+  const result = await buildPresentationResult({
+    programScopeTable: [
+      {
+        "Program ID": "2222",
+        "Program Name": "Higher Commission Retailer",
+        Conversions: "40",
+        "Order Value": "£4,000",
+        "Publisher Commission": "£700",
+        "Digital Wallet": "£25",
+        "Total Earnings": "£725",
+        "Publisher Commission YoY %": "-2.0%",
+        "Earnings YoY %": "+1.0%",
+        "Conversions YoY %": "-10.0%"
+      }
+    ]
+  });
+  const zip = await JSZip.loadAsync(result.buffer);
+  const reportingSlideIndex = result.deckSpec.slides.findIndex((slide) => slide.id === "reporting-period") + 1;
+  const programSlideIndex = result.deckSpec.slides.findIndex((slide) => slide.id === "kpi-cost-roi") + 1;
+  const thankYouSlideIndex = result.deckSpec.slides.findIndex((slide) => slide.id === "thank-you") + 1;
+  const reportingXml = await zip.file(`ppt/slides/slide${reportingSlideIndex}.xml`).async("string");
+  const programXml = await zip.file(`ppt/slides/slide${programSlideIndex}.xml`).async("string");
+  const thankYouXml = await zip.file(`ppt/slides/slide${thankYouSlideIndex}.xml`).async("string");
+
+  assert.doesNotMatch(reportingXml, /Selected period from the QBR request/i);
+  assert.match(programXml, /Per-program view ordered by publisher commission\./);
+  assert.match(programXml, /algn="ctr"/);
+  assert.match(thankYouXml, /Any Questions\?/);
+  assert.match(thankYouXml, /algn="ctr"/);
+  assert.doesNotMatch(thankYouXml, /TD Publisher Performance Review|2026-01-16 to 2026-04-15/);
+}
+
 async function programLevelAnalysisUsesPublisherCommissionHierarchy() {
   const deckSpec = await buildDeckSpec({
     programScopeTable: [
@@ -172,6 +279,7 @@ async function programLevelAnalysisUsesPublisherCommissionHierarchy() {
     "Program ID",
     "Program Name",
     "Publisher Commission",
+    "Digital Wallet",
     "Total Earnings",
     "Conversions",
     "Order Value",
@@ -182,12 +290,55 @@ async function programLevelAnalysisUsesPublisherCommissionHierarchy() {
   assert.equal(table.rows[0][0], "2222");
   assert.equal(table.rows[0][1], "Higher Commission Retailer");
   assert.equal(table.rows[0][2], "£700");
-  assert.equal(table.rows[0][3], "£725");
+  assert.equal(table.rows[0][3], "£25");
+  assert.equal(table.rows[0][4], "£725");
   assert.equal(table.rows[1][0], "1111");
   assert.equal(table.rows[1][1], "Lower Commission Retailer");
-  assert(table.columns.every((label) => !/digital wallet/i.test(label)));
   assert(table.columns.every((label) => !/^clicks$/i.test(label)));
   assert(table.columns.every((label) => !/clicks yoy|^sales$|sales yoy|^commission$/i.test(label)));
+}
+
+async function topNewProgramsIncludesWalletAndSortsByTotalEarnings() {
+  const deckSpec = await buildDeckSpec({
+    publisherTables: {
+      brandNewProgramsTable: [
+        {
+          "Program ID": "1111",
+          "Program Name": "Lower Earning Retailer",
+          Conversions: "10",
+          "Order Value": "£5,000",
+          "Publisher Commission": "£500",
+          "Digital Wallet": "£10",
+          "Total Earnings": "£510"
+        },
+        {
+          "Program ID": "2222",
+          "Program Name": "Higher Earning Retailer",
+          Conversions: "4",
+          "Order Value": "£2,000",
+          "Publisher Commission": "£300",
+          "Digital Wallet": "£450",
+          "Total Earnings": "£750"
+        }
+      ]
+    }
+  });
+  const slide = deckSpec.slides.find((item) => item.id === "brand-new-publishers");
+  const table = slide.tables[0];
+
+  assert.deepEqual(table.columns, [
+    "Program ID",
+    "Program Name",
+    "Conversions",
+    "Order Value",
+    "Publisher Commission",
+    "Digital Wallet",
+    "Total Earnings"
+  ]);
+  assert.equal(table.rows[0][0], "2222");
+  assert.equal(table.rows[0][1], "Higher Earning Retailer");
+  assert.equal(table.rows[0][5], "£450");
+  assert.equal(table.rows[0][6], "£750");
 }
 
 async function moversShakersUsesPublisherCommissionBarChart() {
@@ -538,9 +689,14 @@ async function publisherQbrAnalysisUsesProgramLanguage() {
 async function run() {
   const tests = [
     coverUsesPublisherPerformanceReviewTitle,
+    renderedCoverUsesWhiteTdLogoAsset,
     executiveSummaryUsesRequestedPublisherMetrics,
     kpiSummaryTableUsesMetricRowsAndAddsRequestedMetrics,
+    programActivationSnapshotSlideFollowsKpiSummary,
+    renderedActivationSnapshotUsesTdLineGridStyle,
+    renderedSlideUtilityTextIsRemovedAndTableTitlesAreCentered,
     programLevelAnalysisUsesPublisherCommissionHierarchy,
+    topNewProgramsIncludesWalletAndSortsByTotalEarnings,
     moversShakersUsesPublisherCommissionBarChart,
     moversShakersDisplaysDeclinersSmallestLossFirst,
     renderedMoversShakersNegativeBarsUseRedFill,

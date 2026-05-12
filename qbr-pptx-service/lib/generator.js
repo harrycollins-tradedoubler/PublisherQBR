@@ -16,8 +16,10 @@ function loadPackage(name) {
 const PptxGenJS = loadPackage("pptxgenjs");
 const TEMPLATE_BLUE_BG_PATH = path.join(__dirname, "..", "assets", "qbr-bg-blue.png");
 const TEMPLATE_LIGHT_BG_PATH = path.join(__dirname, "..", "assets", "qbr-bg-light.png");
+const TD_LOGO_WHITE_PATH = path.join(__dirname, "..", "assets", "td-logo-white.png");
 const HAS_TEMPLATE_BLUE_BG = fsSync.existsSync(TEMPLATE_BLUE_BG_PATH);
 const HAS_TEMPLATE_LIGHT_BG = fsSync.existsSync(TEMPLATE_LIGHT_BG_PATH);
+const HAS_TD_LOGO_WHITE = fsSync.existsSync(TD_LOGO_WHITE_PATH);
 const KPI_ICON_PATHS = {
   sales: path.join(__dirname, "..", "assets", "kpi-icon-sales.png"),
   ordervalue: path.join(__dirname, "..", "assets", "kpi-icon-ordervalue.png"),
@@ -68,6 +70,10 @@ const TABLE_KEY_MAP = {
   competitorgroupsummary: "competitorAnalysisTable",
   competitorweeklypubcommchart: "competitorWeeklyPubCommChart",
   weeklypubcommchart: "competitorWeeklyPubCommChart",
+  programactivationsnapshottable: "programActivationSnapshotTable",
+  programactivationsnapshot: "programActivationSnapshotTable",
+  activationsnapshottable: "programActivationSnapshotTable",
+  activationsnapshot: "programActivationSnapshotTable",
   topprogramscompetitorperformancetable: "topProgramsCompetitorPerformanceTable",
   topprogramscompetitorperformance: "topProgramsCompetitorPerformanceTable",
   competitorperformancetable: "topProgramsCompetitorPerformanceTable"
@@ -344,6 +350,13 @@ function cleanText(value, fallback = "") {
 
 function cleanInlineText(value, fallback = "") {
   return cleanText(value, fallback).replace(/\s+/g, " ").trim();
+}
+
+function titleCaseWords(value) {
+  return cleanInlineText(value)
+    .split(" ")
+    .map((word) => word ? word[0].toUpperCase() + word.slice(1) : word)
+    .join(" ");
 }
 
 function publisherAnalysisToProgramContext(value) {
@@ -1173,6 +1186,7 @@ function buildProgramBreakdownTable(input) {
     "Program ID",
     "Program Name",
     "Publisher Commission",
+    "Digital Wallet",
     "Total Earnings",
     "Conversions",
     "Order Value",
@@ -1256,7 +1270,7 @@ function buildProgramBreakdownTable(input) {
   }
 
   function placeholderRows() {
-    return Array.from(selectedProgramIds).map((id) => [id, "-", "-", "-", "-", "-", "-", "-", "-"]);
+    return Array.from(selectedProgramIds).map((id) => [id, "-", "-", "-", "-", "-", "-", "-", "-", "-"]);
   }
 
   const scope = input.programScopeTable;
@@ -1269,6 +1283,7 @@ function buildProgramBreakdownTable(input) {
         }
         const programName = firstObjectValue(row, ["Program Name", "Program", "ProgramName", "Name"]) || programId;
         const publisherCommission = firstObjectValue(row, ["Publisher Commission", "Current Publisher Commission", "Commission", "Current Commission"]);
+        const digitalWallet = firstObjectValue(row, ["Digital Wallet", "Digital Wallets", "DigitalWallet", "DigitalWallets"]);
         const totalEarnings = firstObjectValue(row, ["Total Earnings", "Total Earning", "TotalEarnings"]);
         const conversions = firstObjectValue(row, ["Conversions", "Current Conversions", "Sales", "Current Sales"]);
         const orderValue = firstObjectValue(row, ["Order Value", "Total Order Value", "Current OV", "Current Order Value"]);
@@ -1279,6 +1294,7 @@ function buildProgramBreakdownTable(input) {
           programId,
           programName,
           publisherCommission,
+          digitalWallet,
           totalEarnings,
           conversions,
           orderValue,
@@ -1326,6 +1342,7 @@ function buildProgramBreakdownTable(input) {
         }
         const programName = firstRowCell(row, idx, ["program name", "program", "programname", "name"]) || programId;
         const publisherCommission = firstRowCell(row, idx, ["publisher commission", "current publisher commission", "commission", "current commission"]);
+        const digitalWallet = firstRowCell(row, idx, ["digital wallet", "digital wallets", "digitalwallet", "digitalwallets"]);
         const totalEarnings = firstRowCell(row, idx, ["total earnings", "total earning", "totalearnings"]);
         const conversions = firstRowCell(row, idx, ["conversions", "current conversions", "sales", "current sales"]);
         const orderValue = firstRowCell(row, idx, ["order value", "total order value", "current ov", "current order value"]);
@@ -1336,6 +1353,7 @@ function buildProgramBreakdownTable(input) {
           programId,
           programName,
           publisherCommission,
+          digitalWallet,
           totalEarnings,
           conversions,
           orderValue,
@@ -1377,7 +1395,7 @@ function buildProgramBreakdownTable(input) {
     return {
       title: "Program-Level Breakdown",
       columns: targetColumns,
-      rows: input.analysisProgramIds.map((id) => [id, "-", "-", "-", "-", "-", "-", "-", "-"]),
+      rows: input.analysisProgramIds.map((id) => [id, "-", "-", "-", "-", "-", "-", "-", "-", "-"]),
       dense: false
     };
   }
@@ -1385,7 +1403,7 @@ function buildProgramBreakdownTable(input) {
   return {
     title: "Program-Level Breakdown",
     columns: targetColumns,
-    rows: [["-", "-", "-", "-", "-", "-", "-", "-", "-"]],
+    rows: [["-", "-", "-", "-", "-", "-", "-", "-", "-", "-"]],
     dense: false
   };
 }
@@ -2057,10 +2075,24 @@ function buildTopNewProgramsTable(table) {
     "Conversions",
     "Order Value",
     "Publisher Commission",
+    "Digital Wallet",
     "Total Earnings"
   ];
   const rows = table && Array.isArray(table.rows)
-    ? table.rows.slice(0, 10).map((row) => columns.map((column) => readTableCell(row, [column]) || "-"))
+    ? table.rows
+      .slice()
+      .sort((a, b) => {
+        const byTotalEarnings = (parseNumber(readTableCell(b, ["Total Earnings", "Total Earning", "TotalEarnings"])) || 0)
+          - (parseNumber(readTableCell(a, ["Total Earnings", "Total Earning", "TotalEarnings"])) || 0);
+        if (byTotalEarnings !== 0) return byTotalEarnings;
+        const byPublisherCommission = (parseNumber(readTableCell(b, ["Publisher Commission", "Current Publisher Commission", "Commission"])) || 0)
+          - (parseNumber(readTableCell(a, ["Publisher Commission", "Current Publisher Commission", "Commission"])) || 0);
+        if (byPublisherCommission !== 0) return byPublisherCommission;
+        return cleanInlineText(readTableCell(a, ["Program Name", "Program", "Name"]))
+          .localeCompare(cleanInlineText(readTableCell(b, ["Program Name", "Program", "Name"])));
+      })
+      .slice(0, 10)
+      .map((row) => columns.map((column) => readTableCell(row, [column]) || "-"))
     : [];
 
   return {
@@ -2069,6 +2101,47 @@ function buildTopNewProgramsTable(table) {
     rows: rows.length ? rows : [columns.map(() => "-")],
     dense: false
   };
+}
+
+function buildProgramActivationSnapshot(table) {
+  const rows = table && Array.isArray(table.rows) ? table.rows : [];
+  const labelMap = new Map([
+    ["joinedprograms", "Joined programs"],
+    ["acceptedprograms", "Joined programs"],
+    ["acceptances", "Joined programs"],
+    ["withclicks", "With clicks"],
+    ["wclicks", "With clicks"],
+    ["programswithclicks", "With clicks"],
+    ["withpubcommission", "Pub commission"],
+    ["withpublishercommission", "Pub commission"],
+    ["wpubcomm", "Pub commission"],
+    ["wpublcomm", "Pub commission"],
+    ["programswithpubcommission", "Pub commission"],
+    ["inactive", "Inactive"],
+    ["inactiveprograms", "Inactive"]
+  ]);
+  const fallback = [
+    { label: "Joined programs", total: "-", newCount: "-", newPercent: "-" },
+    { label: "With clicks", total: "-", newCount: "-", newPercent: "-" },
+    { label: "Pub commission", total: "-", newCount: "-", newPercent: "-" },
+    { label: "Inactive", total: "-", newCount: "-", newPercent: "-" }
+  ];
+  const byLabel = new Map();
+
+  rows.forEach((row) => {
+    const rawLabel = readTableCell(row, ["Metric", "Label", "Status", "Bucket", "Program Status"]);
+    const normalized = cleanInlineText(rawLabel).toLowerCase().replace(/[^a-z0-9]/g, "");
+    const label = labelMap.get(normalized) || cleanInlineText(rawLabel);
+    if (!label) return;
+    byLabel.set(label, {
+      label,
+      total: readTableCell(row, ["Total", "Count", "Programs", "Value"]) || "-",
+      newCount: readTableCell(row, ["New", "New Programs", "New Count"]) || "-",
+      newPercent: readTableCell(row, ["New %", "New Percent", "New Percentage", "NewPct"]) || "-"
+    });
+  });
+
+  return fallback.map((item) => byLabel.get(item.label) || item);
 }
 
 function buildActionBullets(input) {
@@ -2400,6 +2473,7 @@ function buildDeckSpec(input, theme) {
   const competitorAnalysis = buildCompetitorAnalysisTable(input.tables.competitorAnalysisTable);
   const competitorWeeklyChart = buildWeeklyPubCommComboChart(input.tables.competitorWeeklyPubCommChart);
   const topProgramsCompetitorPerformance = buildTopProgramsCompetitorPerformanceTable(input.tables.topProgramsCompetitorPerformanceTable);
+  const activationSnapshot = buildProgramActivationSnapshot(input.tables.programActivationSnapshotTable);
   const kpiAnalysisBullets = buildKpiAnalysisBullets(input);
   const publisherOverviewBullets = buildPublisherOverviewBullets(input);
   const segmentPerformanceBlocks = buildSegmentPerformanceBlocks(input);
@@ -2409,7 +2483,7 @@ function buildDeckSpec(input, theme) {
   slides.push({
     id: "cover",
     kind: "cover",
-    title: `${input.client} performance review`,
+    title: titleCaseWords(`${input.client} performance review`),
     subtitle: "",
     headline,
     summary: input.qbrFocusDetail
@@ -2424,7 +2498,7 @@ function buildDeckSpec(input, theme) {
     id: "reporting-period",
     kind: "reporting-period",
     title: "Reporting Period",
-    subtitle: "Selected period from the QBR request",
+    subtitle: "",
     headline: "",
     summary: "",
     bullets: [
@@ -2463,6 +2537,18 @@ function buildDeckSpec(input, theme) {
       }
     ],
     footerNote: "Total earnings = Publisher Commission + Digital Wallet. Conversion rate uses the source API's conversion-rate basis."
+  });
+
+  slides.push({
+    id: "program-activation-snapshot",
+    kind: "program-activation-snapshot",
+    title: "Program Activation Snapshot",
+    subtitle: "",
+    bullets: [],
+    kpis: [],
+    tables: [],
+    activationSnapshot,
+    summary: "A clean status view for newly joined primary-publisher programs, placed directly after the KPI summary."
   });
 
   slides.push({
@@ -2609,7 +2695,7 @@ function toColor(hex) {
 }
 
 function isBlueKind(kind) {
-  return ["cover", "insights-blue", "sales-growth-signals-blue", "recommendations-blue", "segment-performance-blue", "thank-you"].includes(kind);
+  return ["cover", "insights-blue", "sales-growth-signals-blue", "recommendations-blue", "segment-performance-blue", "program-activation-snapshot", "thank-you"].includes(kind);
 }
 
 function titleRuns(title) {
@@ -2762,6 +2848,7 @@ function addTitle(slide, deck, spec, color, subtitleColor, isBlueSlide = false) 
       fontFace: deck.theme.fonts.body,
       fontSize: 11,
       color: toColor(subtitleColor),
+      align: "center",
       margin: 0
     });
   }
@@ -2940,6 +3027,119 @@ function addKpis(slide, deck, cards, origin, mode = "light") {
       fontSize: 10.2,
       margin: 0,
       breakLine: true
+    });
+  });
+}
+
+function addActivationSnapshotCell(slide, deck, item, box) {
+  const total = cleanInlineText(item.total || "-");
+  const newCount = cleanInlineText(item.newCount || "-");
+  const newPercent = cleanInlineText(item.newPercent || "-");
+  const label = cleanInlineText(item.label || "Metric");
+  const groupW = Math.min(3.34, box.w - 0.84);
+  const groupX = box.x + (box.w - groupW) / 2;
+  const detailGap = 0.42;
+  const detailW = (groupW - detailGap) / 2;
+
+  slide.addText(total, {
+    x: groupX,
+    y: box.y + 0.34,
+    w: groupW,
+    h: 0.62,
+    fontFace: deck.theme.fonts.body,
+    fontSize: total.length > 3 ? 31 : 38,
+    color: toColor("#FFFFFF"),
+    align: "center",
+    margin: 0,
+    fit: "shrink"
+  });
+  slide.addText(label, {
+    x: groupX,
+    y: box.y + 1.02,
+    w: groupW,
+    h: 0.25,
+    fontFace: deck.theme.fonts.body,
+    fontSize: 13.6,
+    color: toColor("#BCEBFF"),
+    align: "center",
+    margin: 0,
+    fit: "shrink"
+  });
+  [
+    { label: "New", value: newCount, x: groupX },
+    { label: "New %", value: newPercent, x: groupX + detailW + detailGap }
+  ].forEach((detail) => {
+    slide.addText(detail.label, {
+      x: detail.x,
+      y: box.y + 1.58,
+      w: detailW,
+      h: 0.16,
+      fontFace: deck.theme.fonts.body,
+      fontSize: 8.2,
+      color: toColor(deck.theme.colors.paper),
+      align: "center",
+      margin: 0
+    });
+    slide.addText(detail.value, {
+      x: detail.x,
+      y: box.y + 1.82,
+      w: detailW,
+      h: 0.26,
+      fontFace: deck.theme.fonts.body,
+      fontSize: 14.2,
+      color: toColor("#BCEBFF"),
+      align: "center",
+      margin: 0,
+      fit: "shrink"
+    });
+  });
+}
+
+function renderProgramActivationSnapshotSlide(slide, deck, spec) {
+  addBlueChrome(slide, deck);
+  addSlideWatermark(slide, deck, true);
+
+  slide.addText("Activation Status", {
+    x: 0.72,
+    y: 0.32,
+    w: 5.4,
+    h: 0.46,
+    fontFace: deck.theme.fonts.body,
+    fontSize: 28,
+    color: toColor("#FFFFFF"),
+    margin: 0,
+    fit: "shrink"
+  });
+
+  const items = spec.activationSnapshot || [];
+  const matrix = { x: 0.72, y: 1.02, w: 11.88, h: 5.58 };
+  const cellW = matrix.w / 2;
+  const cellH = matrix.h / 2;
+  const centerX = matrix.x + cellW;
+  const centerY = matrix.y + cellH;
+  const ruleInsetX = 0.42;
+  const ruleGapX = 0.48;
+  const ruleInsetY = 0.40;
+  const ruleGapY = 0.34;
+
+  [
+    { x: centerX, y: matrix.y + ruleInsetY, w: 0, h: cellH - ruleInsetY - ruleGapY },
+    { x: centerX, y: centerY + ruleGapY, w: 0, h: cellH - ruleInsetY - ruleGapY },
+    { x: matrix.x + ruleInsetX, y: centerY, w: cellW - ruleInsetX - ruleGapX, h: 0 },
+    { x: centerX + ruleGapX, y: centerY, w: cellW - ruleInsetX - ruleGapX, h: 0 }
+  ].forEach((line) => {
+    slide.addShape("line", {
+      ...line,
+      line: { color: toColor("#FFFFFF"), pt: 1.0, transparency: 0 }
+    });
+  });
+
+  items.slice(0, 4).forEach((item, index) => {
+    addActivationSnapshotCell(slide, deck, item, {
+      x: matrix.x + (index % 2) * cellW,
+      y: matrix.y + Math.floor(index / 2) * cellH,
+      w: cellW,
+      h: cellH
     });
   });
 }
@@ -3389,26 +3589,15 @@ function renderSlide(slide, deck, spec, pageNumber) {
       bold: true,
       margin: 0
     });
-    slide.addText("td", {
-      x: 0.62,
-      y: 4.22,
-      w: 2.15,
-      h: 1.72,
-      fontFace: deck.theme.fonts.heading,
-      fontSize: 118,
-      color: toColor(deck.theme.colors.paper),
-      margin: 0
-    });
-    slide.addText("tradedoubler", {
-      x: 0.76,
-      y: 6.43,
-      w: 2.5,
-      h: 0.24,
-      fontFace: deck.theme.fonts.body,
-      fontSize: 10.2,
-      color: toColor(deck.theme.colors.paper),
-      margin: 0
-    });
+    if (HAS_TD_LOGO_WHITE) {
+      slide.addImage({
+        path: TD_LOGO_WHITE_PATH,
+        x: 0.62,
+        y: 4.22,
+        w: 2.15,
+        h: 1.74
+      });
+    }
     return;
   }
 
@@ -3437,32 +3626,19 @@ function renderSlide(slide, deck, spec, pageNumber) {
     slide.addText(uiLabel(deck, "anyQuestions", "Any Questions?"), {
       x: 0.95,
       y: 2.84,
-      w: 10.6,
+      w: 11.45,
       h: 0.35,
       fontFace: deck.theme.fonts.heading,
       fontSize: 17.5,
       color: toColor(deck.theme.colors.paper),
+      align: "center",
       margin: 0
     });
-    const thankYouSubtitleTemplate = uiLabel(
-      deck,
-      "thankYouSubtitleTemplate",
-      "TD Publisher Performance Review - {period}"
-    );
-    const thankYouSubtitle = thankYouSubtitleTemplate.includes("{period}")
-      ? thankYouSubtitleTemplate.replace("{period}", deck.metadata.reportingPeriod)
-      : `${thankYouSubtitleTemplate} ${deck.metadata.reportingPeriod}`;
-    slide.addText(thankYouSubtitle, {
-      x: 0.95,
-      y: 3.17,
-      w: 10.8,
-      h: 0.24,
-      fontFace: deck.theme.fonts.body,
-      fontSize: 10.2,
-      color: toColor(deck.theme.colors.paper),
-      transparency: 15,
-      margin: 0
-    });
+    return;
+  }
+
+  if (spec.kind === "program-activation-snapshot") {
+    renderProgramActivationSnapshotSlide(slide, deck, spec);
     return;
   }
 
