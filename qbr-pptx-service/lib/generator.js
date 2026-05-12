@@ -18,10 +18,12 @@ const TEMPLATE_BLUE_BG_PATH = path.join(__dirname, "..", "assets", "qbr-bg-blue.
 const TEMPLATE_LIGHT_BG_PATH = path.join(__dirname, "..", "assets", "qbr-bg-light.png");
 const TD_LOGO_WHITE_PATH = path.join(__dirname, "..", "assets", "td-logo-white.png");
 const TD_FIFTH_ELEMENT_WHITE_PATH = path.join(__dirname, "..", "assets", "fifth-element-white.png");
+const TD_FIFTH_ELEMENT_WIREFRAME_CYAN_PATH = path.join(__dirname, "..", "assets", "fifth-element-wireframe-cyan.png");
 const HAS_TEMPLATE_BLUE_BG = fsSync.existsSync(TEMPLATE_BLUE_BG_PATH);
 const HAS_TEMPLATE_LIGHT_BG = fsSync.existsSync(TEMPLATE_LIGHT_BG_PATH);
 const HAS_TD_LOGO_WHITE = fsSync.existsSync(TD_LOGO_WHITE_PATH);
 const HAS_TD_FIFTH_ELEMENT_WHITE = fsSync.existsSync(TD_FIFTH_ELEMENT_WHITE_PATH);
+const HAS_TD_FIFTH_ELEMENT_WIREFRAME_CYAN = fsSync.existsSync(TD_FIFTH_ELEMENT_WIREFRAME_CYAN_PATH);
 const KPI_ICON_PATHS = {
   sales: path.join(__dirname, "..", "assets", "kpi-icon-sales.png"),
   ordervalue: path.join(__dirname, "..", "assets", "kpi-icon-ordervalue.png"),
@@ -2827,6 +2829,18 @@ function addBlueChrome(slide, deck) {
   }
 }
 
+function addCyanFifthElementWireframe(slide, box) {
+  if (!HAS_TD_FIFTH_ELEMENT_WIREFRAME_CYAN) return;
+  slide.addImage({
+    path: TD_FIFTH_ELEMENT_WIREFRAME_CYAN_PATH,
+    x: box.x,
+    y: box.y,
+    w: box.w,
+    h: box.h,
+    transparency: box.transparency || 0
+  });
+}
+
 function addTitle(slide, deck, spec, color, subtitleColor, isBlueSlide = false) {
   const titleText = cleanInlineText(spec.title, "Slide Title");
   const titleRunsData = isBlueSlide ? [{ text: titleText, options: {} }] : titleRuns(titleText);
@@ -3527,8 +3541,6 @@ function renderSlide(slide, deck, spec, pageNumber) {
   if (spec.kind === "cover") {
     addBlueChrome(slide, deck);
     addSlideWatermark(slide, deck, true);
-    const locale = deck.metadata.locale || "en-GB";
-    const periodTag = parsePeriodRange(deck.metadata.reportingPeriod, locale);
     const coverTitle = cleanInlineText(spec.title || `${deck.metadata.client} Quarterly Business Review`);
     const match = coverTitle.match(/^(.*?)(business review)$/i);
     const titleRunsData = match
@@ -3562,46 +3574,6 @@ function renderSlide(slide, deck, spec, pageNumber) {
       breakLine: true,
       margin: 0
     });
-    slide.addShape("roundRect", {
-      x: 0.68,
-      y: 3.0,
-      w: 1.28,
-      h: 0.36,
-      radius: 0.04,
-      line: { color: toColor(deck.theme.colors.paper), pt: 0 },
-      fill: { color: toColor(deck.theme.colors.paper), transparency: 25 }
-    });
-    slide.addText(uiLabel(deck, "qbrReport", "QBR Report"), {
-      x: 0.83,
-      y: 3.08,
-      w: 1.0,
-      h: 0.2,
-      fontFace: deck.theme.fonts.body,
-      fontSize: 8.5,
-      color: toColor(deck.theme.colors.ink),
-      bold: true,
-      margin: 0
-    });
-    slide.addShape("roundRect", {
-      x: 2.06,
-      y: 3.0,
-      w: 2.65,
-      h: 0.36,
-      radius: 0.04,
-      line: { color: toColor(deck.theme.colors.accent), pt: 0.8 },
-      fill: { color: toColor(deck.theme.colors.accent), transparency: 100 }
-    });
-    slide.addText(`${periodTag} ${uiLabel(deck, "analysisTagSuffix", "Analysis")}`.trim(), {
-      x: 2.18,
-      y: 3.08,
-      w: 3.2,
-      h: 0.2,
-      fontFace: deck.theme.fonts.body,
-      fontSize: 8.5,
-      color: toColor("#80D4FF"),
-      bold: true,
-      margin: 0
-    });
     if (HAS_TD_LOGO_WHITE) {
       slide.addImage({
         path: TD_LOGO_WHITE_PATH,
@@ -3611,12 +3583,14 @@ function renderSlide(slide, deck, spec, pageNumber) {
         h: 1.74
       });
     }
+    addCyanFifthElementWireframe(slide, { x: 7.32, y: 2.06, w: 4.62, h: 4.62 });
     return;
   }
 
   if (spec.kind === "thank-you") {
     addBlueChrome(slide, deck);
     addSlideWatermark(slide, deck, true);
+    addCyanFifthElementWireframe(slide, { x: 6.10, y: 0.20, w: 5.86, h: 5.86 });
     slide.addText(spec.title, {
       x: 0.7,
       y: 1.45,
@@ -3630,7 +3604,7 @@ function renderSlide(slide, deck, spec, pageNumber) {
     slide.addShape("roundRect", {
       x: 0.62,
       y: 2.55,
-      w: 12.05,
+      w: 2.82,
       h: 1.12,
       radius: 0.06,
       line: { color: toColor(deck.theme.colors.paper), pt: 0.35, transparency: 55 },
@@ -3639,12 +3613,11 @@ function renderSlide(slide, deck, spec, pageNumber) {
     slide.addText(uiLabel(deck, "anyQuestions", "Any Questions?"), {
       x: 0.95,
       y: 2.84,
-      w: 11.45,
+      w: 2.15,
       h: 0.35,
       fontFace: deck.theme.fonts.heading,
       fontSize: 17.5,
       color: toColor(deck.theme.colors.paper),
-      align: "center",
       margin: 0
     });
     return;

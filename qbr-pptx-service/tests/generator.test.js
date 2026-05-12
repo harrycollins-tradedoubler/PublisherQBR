@@ -112,6 +112,41 @@ async function renderedCoverUsesWhiteTdLogoAsset() {
   assert.doesNotMatch(slideXml, /<a:t>td<\/a:t>|tradedoubler/i);
 }
 
+function slideHasImageExtent(slideXml, widthInches, heightInches) {
+  const emuPerInch = 914400;
+  return [...slideXml.matchAll(/<a:ext cx="(\d+)" cy="(\d+)"/g)]
+    .some((match) => (
+      Math.abs(Number(match[1]) - Math.round(widthInches * emuPerInch)) <= 8
+        && Math.abs(Number(match[2]) - Math.round(heightInches * emuPerInch)) <= 8
+    ));
+}
+
+async function renderedCoverUsesCyanWireframeAndNoUtilityPills() {
+  const result = await buildPresentationResult();
+  const zip = await JSZip.loadAsync(result.buffer);
+  const slideXml = await zip.file("ppt/slides/slide1.xml").async("string");
+  const slideRels = await zip.file("ppt/slides/_rels/slide1.xml.rels").async("string");
+  const imageRels = [...slideRels.matchAll(/Target="\.\.\/media\/image[-\d]+\.png"/g)];
+
+  assert(imageRels.length >= 3);
+  assert.equal(slideHasImageExtent(slideXml, 4.62, 4.62), true);
+  assert.doesNotMatch(slideXml, /QBR Report|2026-01-16 to 2026-04-15|Analysis/);
+}
+
+async function renderedThankYouUsesLargerCyanWireframeAndCompactQuestionBubble() {
+  const result = await buildPresentationResult();
+  const zip = await JSZip.loadAsync(result.buffer);
+  const thankYouSlideIndex = result.deckSpec.slides.findIndex((slide) => slide.id === "thank-you") + 1;
+  const slideXml = await zip.file(`ppt/slides/slide${thankYouSlideIndex}.xml`).async("string");
+  const slideRels = await zip.file(`ppt/slides/_rels/slide${thankYouSlideIndex}.xml.rels`).async("string");
+  const imageRels = [...slideRels.matchAll(/Target="\.\.\/media\/image[-\d]+\.png"/g)];
+
+  assert(imageRels.length >= 2);
+  assert.equal(slideHasImageExtent(slideXml, 5.86, 5.86), true);
+  assert.match(slideXml, /Any Questions\?/);
+  assert.doesNotMatch(slideXml, /<a:ext cx="11018520" cy="1024128"/);
+}
+
 async function executiveSummaryUsesRequestedPublisherMetrics() {
   const deckSpec = await buildDeckSpec();
   const slide = deckSpec.slides.find((item) => item.id === "executive-summary");
@@ -268,7 +303,6 @@ async function renderedSlideUtilityTextIsRemovedAndTableTitlesAreCentered() {
   assert.match(programXml, /Per-program view ordered by publisher commission\./);
   assert.match(programXml, /algn="ctr"/);
   assert.match(thankYouXml, /Any Questions\?/);
-  assert.match(thankYouXml, /algn="ctr"/);
   assert.doesNotMatch(thankYouXml, /TD Publisher Performance Review|2026-01-16 to 2026-04-15/);
 }
 
@@ -719,6 +753,8 @@ async function run() {
   const tests = [
     coverUsesPublisherPerformanceReviewTitle,
     renderedCoverUsesWhiteTdLogoAsset,
+    renderedCoverUsesCyanWireframeAndNoUtilityPills,
+    renderedThankYouUsesLargerCyanWireframeAndCompactQuestionBubble,
     executiveSummaryUsesRequestedPublisherMetrics,
     kpiSummaryTableUsesMetricRowsAndAddsRequestedMetrics,
     programActivationSnapshotSlideFollowsKpiSummary,
