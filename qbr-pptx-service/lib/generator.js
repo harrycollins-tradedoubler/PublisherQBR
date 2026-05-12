@@ -17,9 +17,11 @@ const PptxGenJS = loadPackage("pptxgenjs");
 const TEMPLATE_BLUE_BG_PATH = path.join(__dirname, "..", "assets", "qbr-bg-blue.png");
 const TEMPLATE_LIGHT_BG_PATH = path.join(__dirname, "..", "assets", "qbr-bg-light.png");
 const TD_LOGO_WHITE_PATH = path.join(__dirname, "..", "assets", "td-logo-white.png");
+const TD_FIFTH_ELEMENT_WHITE_PATH = path.join(__dirname, "..", "assets", "fifth-element-white.png");
 const HAS_TEMPLATE_BLUE_BG = fsSync.existsSync(TEMPLATE_BLUE_BG_PATH);
 const HAS_TEMPLATE_LIGHT_BG = fsSync.existsSync(TEMPLATE_LIGHT_BG_PATH);
 const HAS_TD_LOGO_WHITE = fsSync.existsSync(TD_LOGO_WHITE_PATH);
+const HAS_TD_FIFTH_ELEMENT_WHITE = fsSync.existsSync(TD_FIFTH_ELEMENT_WHITE_PATH);
 const KPI_ICON_PATHS = {
   sales: path.join(__dirname, "..", "assets", "kpi-icon-sales.png"),
   ordervalue: path.join(__dirname, "..", "assets", "kpi-icon-ordervalue.png"),
@@ -3122,17 +3124,28 @@ function renderProgramActivationSnapshotSlide(slide, deck, spec) {
   const ruleInsetY = 0.40;
   const ruleGapY = 0.34;
 
-  [
-    { x: centerX, y: matrix.y + ruleInsetY, w: 0, h: cellH - ruleInsetY - ruleGapY },
-    { x: centerX, y: centerY + ruleGapY, w: 0, h: cellH - ruleInsetY - ruleGapY },
-    { x: matrix.x + ruleInsetX, y: centerY, w: cellW - ruleInsetX - ruleGapX, h: 0 },
-    { x: centerX + ruleGapX, y: centerY, w: cellW - ruleInsetX - ruleGapX, h: 0 }
-  ].forEach((line) => {
-    slide.addShape("line", {
-      ...line,
-      line: { color: toColor("#FFFFFF"), pt: 1.0, transparency: 0 }
+  if (HAS_TD_FIFTH_ELEMENT_WHITE) {
+    const divider = { w: 4.72, h: 3.34 };
+    slide.addImage({
+      path: TD_FIFTH_ELEMENT_WHITE_PATH,
+      x: centerX - divider.w / 2,
+      y: centerY - divider.h / 2,
+      w: divider.w,
+      h: divider.h
     });
-  });
+  } else {
+    [
+      { x: centerX, y: matrix.y + ruleInsetY, w: 0, h: cellH - ruleInsetY - ruleGapY },
+      { x: centerX, y: centerY + ruleGapY, w: 0, h: cellH - ruleInsetY - ruleGapY },
+      { x: matrix.x + ruleInsetX, y: centerY, w: cellW - ruleInsetX - ruleGapX, h: 0 },
+      { x: centerX + ruleGapX, y: centerY, w: cellW - ruleInsetX - ruleGapX, h: 0 }
+    ].forEach((line) => {
+      slide.addShape("line", {
+        ...line,
+        line: { color: toColor("#FFFFFF"), pt: 1.0, transparency: 0 }
+      });
+    });
+  }
 
   items.slice(0, 4).forEach((item, index) => {
     addActivationSnapshotCell(slide, deck, item, {

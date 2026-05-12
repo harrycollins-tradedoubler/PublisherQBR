@@ -210,6 +210,35 @@ async function renderedActivationSnapshotUsesTdLineGridStyle() {
   assert.doesNotMatch(slideXml, /\sb="1"/);
 }
 
+async function renderedActivationSnapshotUsesBrandedFifthElementDivider() {
+  const result = await buildPresentationResult({
+    publisherTables: {
+      programActivationSnapshotTable: [
+        { Metric: "Joined programs", Total: "337", New: "148", "New %": "44%" },
+        { Metric: "With clicks", Total: "257", New: "82", "New %": "32%" },
+        { Metric: "With pub commission", Total: "180", New: "50", "New %": "28%" },
+        { Metric: "Inactive", Total: "157", New: "98", "New %": "62%" }
+      ]
+    }
+  });
+  const activationSlideIndex = result.deckSpec.slides.findIndex((slide) => slide.id === "program-activation-snapshot") + 1;
+  const zip = await JSZip.loadAsync(result.buffer);
+  const slideXml = await zip.file(`ppt/slides/slide${activationSlideIndex}.xml`).async("string");
+  const slideRels = await zip.file(`ppt/slides/_rels/slide${activationSlideIndex}.xml.rels`).async("string");
+  const imageRels = [...slideRels.matchAll(/Target="\.\.\/media\/image[-\d]+\.png"/g)];
+  const extents = [...slideXml.matchAll(/<a:ext cx="(\d+)" cy="(\d+)"/g)]
+    .map((match) => ({ cx: Number(match[1]), cy: Number(match[2]) }));
+  const emuPerInch = 914400;
+  const hasWideThinDivider = extents.some((extent) => (
+    Math.abs(extent.cx - Math.round(4.72 * emuPerInch)) <= 8
+      && Math.abs(extent.cy - Math.round(3.34 * emuPerInch)) <= 8
+  ));
+
+  assert(imageRels.length >= 2);
+  assert.equal(hasWideThinDivider, true);
+  assert.doesNotMatch(slideXml, /prst="line"/);
+}
+
 async function renderedSlideUtilityTextIsRemovedAndTableTitlesAreCentered() {
   const result = await buildPresentationResult({
     programScopeTable: [
@@ -694,6 +723,7 @@ async function run() {
     kpiSummaryTableUsesMetricRowsAndAddsRequestedMetrics,
     programActivationSnapshotSlideFollowsKpiSummary,
     renderedActivationSnapshotUsesTdLineGridStyle,
+    renderedActivationSnapshotUsesBrandedFifthElementDivider,
     renderedSlideUtilityTextIsRemovedAndTableTitlesAreCentered,
     programLevelAnalysisUsesPublisherCommissionHierarchy,
     topNewProgramsIncludesWalletAndSortsByTotalEarnings,
