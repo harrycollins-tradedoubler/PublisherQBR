@@ -30,7 +30,9 @@ function baseUrl(req) {
   const envBase = process.env.PUBLIC_BASE_URL;
   if (envBase) return envBase.replace(/\/$/, "");
   const host = req.headers.host || `localhost:${PORT}`;
-  return `http://${host}`;
+  const forwardedProto = String(req.headers["x-forwarded-proto"] || "").split(",")[0].trim();
+  const proto = forwardedProto || (req.socket.encrypted ? "https" : "http");
+  return `${proto}://${host}`;
 }
 
 async function serveFile(req, res, pathname) {

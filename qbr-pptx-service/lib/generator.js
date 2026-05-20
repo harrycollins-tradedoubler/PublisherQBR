@@ -47,6 +47,8 @@ const TEXT_REPLACEMENTS = [
   [/Ã¢â‚¬Å“|Ã¢â‚¬ï¿½/g, '"'],
   [/zÃ…â€š|zÃƒÆ’Ã¢â‚¬Â¦ÃƒÂ¢Ã¢â€šÂ¬Ã…Â¡/g, "z\u0142"]
 ];
+const DIRECTION_MARK_REGEX = /[\u25B2\u25BC\u25B3\u25BD\u25B4\u25BE\u2191-\u2199]/g;
+const MOJIBAKE_DIRECTION_MARK_REGEX = /(?:\u00E2\u2013[\u00B2\u00B3\u00B4\u00BC\u00BD\u00BE]|\u00E2\u2020[\u2018\u201C\u201D\u02DC])/g;
 
 const TABLE_KEY_MAP = {
   top10increase: "topGrowthPublishers",
@@ -67,11 +69,24 @@ const TABLE_KEY_MAP = {
   brandnewtop: "brandNewPublishers",
   brandnewprogramstable: "brandNewPublishers",
   brandnewprograms: "brandNewPublishers",
+  programconnectionstatustable: "programConnectionStatusTable",
+  programconnectionstatus: "programConnectionStatusTable",
+  newprogramconnectionstatustable: "programConnectionStatusTable",
+  newprogramconnectionstatus: "programConnectionStatusTable",
+  programgapanalysistable: "programGapAnalysisTable",
+  programgapanalysis: "programGapAnalysisTable",
+  gapanalysistable: "programGapAnalysisTable",
+  gapanalysis: "programGapAnalysisTable",
+  programgapanalysissummarytable: "programGapAnalysisSummaryTable",
+  programgapanalysissummary: "programGapAnalysisSummaryTable",
   newemergingtop: "newEmergingPublishers",
   stoppedactivitytop: "stoppedActivity",
   newpublisherprospects: "newPublisherProspects",
   competitoranalysistable: "competitorAnalysisTable",
   competitorgroupsummary: "competitorAnalysisTable",
+  competitorsharepubcommchart: "competitorSharePubCommChart",
+  competitorsharepublishercommissionchart: "competitorSharePubCommChart",
+  competitorsharechart: "competitorSharePubCommChart",
   competitorweeklypubcommchart: "competitorWeeklyPubCommChart",
   weeklypubcommchart: "competitorWeeklyPubCommChart",
   programactivationsnapshottable: "programActivationSnapshotTable",
@@ -80,7 +95,11 @@ const TABLE_KEY_MAP = {
   activationsnapshot: "programActivationSnapshotTable",
   topprogramscompetitorperformancetable: "topProgramsCompetitorPerformanceTable",
   topprogramscompetitorperformance: "topProgramsCompetitorPerformanceTable",
-  competitorperformancetable: "topProgramsCompetitorPerformanceTable"
+  competitorperformancetable: "topProgramsCompetitorPerformanceTable",
+  riskdependenciestable: "riskDependenciesTable",
+  risksdependenciestable: "riskDependenciesTable",
+  riskdependencies: "riskDependenciesTable",
+  risksdependencies: "riskDependenciesTable"
 };
 
 const PROGRAM_BREAKDOWN_COLUMNS = [
@@ -347,8 +366,18 @@ function cleanText(value, fallback = "") {
   const repairedCurrency = repaired
     .replace(/Â£/g, "\u00A3")
     .replace(/â‚¬/g, "\u20AC")
+    .replace(/Â¥/g, "\u00A5")
+    .replace(/Â /g, " ")
+    .replace(/Â/g, "")
+    .replace(/â€“|â€”/g, "-")
+    .replace(/â€˜|â€™/g, "'")
+    .replace(/â€œ|â€�/g, '"')
+    .replace(/â€¦/g, "...")
     .replace(/zÅ‚/g, "z\u0142");
-  const xmlSafe = repairedCurrency.replace(/[\u25B2\u25BC\u25B3\u25BD\u25B4\u25BE]/g, "");
+  const xmlSafe = repairedCurrency
+    .replace(MOJIBAKE_DIRECTION_MARK_REGEX, "")
+    .replace(DIRECTION_MARK_REGEX, "")
+    .replace(/\uFFFD/g, "");
   return xmlSafe.replace(/\s+\n/g, "\n").replace(/\n{3,}/g, "\n\n").trim();
 }
 
@@ -361,6 +390,12 @@ function titleCaseWords(value) {
     .split(" ")
     .map((word) => word ? word[0].toUpperCase() + word.slice(1) : word)
     .join(" ");
+}
+
+function capitalizeFirstLetter(value) {
+  const text = cleanInlineText(value || "");
+  if (!text) return "";
+  return `${text[0].toUpperCase()}${text.slice(1)}`;
 }
 
 function publisherAnalysisToProgramContext(value) {
@@ -611,7 +646,7 @@ function parseNumber(value) {
 
   let text = cleanInlineText(value);
   if (!text) return null;
-  text = text.replace(/[\u00A3\u20AC$\u00A5]|z\u0142|kr/gi, "").replace(/\s+/g, "");
+  text = text.replace(/[\u00A3\u20AC$\u00A5]|z\u0142|kr|\b(?:GBP|EUR|USD|AUD|PLN|SEK|NOK|DKK|ISK)\b/gi, "").replace(/\s+/g, "");
   const isPercent = text.endsWith("%");
   text = text.replace(/%/g, "").replace(/[\u25B2\u25BC\u25B3\u25BD\u25B4\u25BE]/g, "");
 
@@ -743,7 +778,53 @@ function normalizeProgramScopeTable(input) {
   };
 }
 
-function normalizeMetrics(programYoYTable) {
+function formatMoneyAmount(value, currencyCode, locale = "en-GB", { signed = false, decimals = 2 } = {}) {
+  if (value === null || value === undefined || Number.isNaN(Number(value))) return "-";
+  const symbol = getCurrencySymbol(currencyCode);
+  const n = Number(value);
+  const abs = Math.abs(n).toLocaleString(locale || "en-GB", {
+    minimumFractionDigits: decimals,
+    maximumFractionDigits: decimals
+  });
+  if (!signed) return `${symbol}${abs}`;
+  if (n > 0) return `+${symbol}${abs}`;
+  if (n < 0) return `-${symbol}${abs}`;
+  return `${symbol}${abs}`;
+}
+
+function buildEarningsPerConversionMetric(metricMap, currencyCode, locale) {
+  const conversions = metricMap.conversions || metricMap.sales;
+  const publisherCommission = metricMap.publcommission || metricMap.publishercommission;
+  if (!conversions || !publisherCommission) return null;
+
+  const perConversion = (commission, conversionCount) => {
+    const commissionValue = Number(commission);
+    const conversionValue = Number(conversionCount);
+    if (!Number.isFinite(commissionValue) || !Number.isFinite(conversionValue) || conversionValue === 0) return null;
+    return commissionValue / conversionValue;
+  };
+
+  const currentValue = perConversion(publisherCommission.currentValue, conversions.currentValue);
+  const previousValue = perConversion(publisherCommission.previousValue, conversions.previousValue);
+  const differenceValue = currentValue !== null && previousValue !== null ? currentValue - previousValue : null;
+  const varianceValue = differenceValue !== null && previousValue ? (differenceValue / Math.abs(previousValue)) * 100 : null;
+
+  return {
+    key: "earningsperconversion",
+    label: "Earnings per Conversion",
+    current: formatMoneyAmount(currentValue, currencyCode, locale),
+    previous: formatMoneyAmount(previousValue, currencyCode, locale),
+    difference: formatMoneyAmount(differenceValue, currencyCode, locale, { signed: true }),
+    variance: varianceValue === null ? "-" : formatSignedPercent(varianceValue, locale, 1),
+    currentValue,
+    previousValue,
+    differenceValue,
+    varianceValue,
+    unit: "currency"
+  };
+}
+
+function normalizeMetrics(programYoYTable, currencyCode = "GBP", locale = "en-GB") {
   const rows = normalizeRows(programYoYTable);
   if (!rows.length) return { metrics: [], metricMap: {} };
   const recent = rows.find((row) => String(row.Row || "").toLowerCase().includes("recent")) || rows[0];
@@ -790,6 +871,11 @@ function normalizeMetrics(programYoYTable) {
   aliasMetric("earningsperclick", "epc", "Earnings per Click");
   aliasMetric("earningspercommission", "earningsperpublcommission", "Earnings per Commission");
   aliasMetric("earningspercommission", "earningsperpublishercommission", "Earnings per Commission");
+
+  const earningsPerConversion = buildEarningsPerConversionMetric(metricMap, currencyCode, locale);
+  if (earningsPerConversion) {
+    metricMap.earningsperconversion = earningsPerConversion;
+  }
 
   return {
     metrics,
@@ -952,7 +1038,7 @@ function normalizePayload(payload) {
     ? Array.from(new Set([...explicitAnalysisProgramIds, ...scopeDerivedProgramIds]))
     : (scopeDerivedProgramIds.length ? scopeDerivedProgramIds : fallbackProgramIds);
   const tables = normalizeTables(payload.publisherTables || {});
-  const { metrics, metricMap } = normalizeMetrics(payload.programYoYTable || []);
+  const { metrics, metricMap } = normalizeMetrics(payload.programYoYTable || [], currencyCode, locale);
   const programScopeTable = (
     Array.isArray(rawProgramScopeTable)
     || (rawProgramScopeTable && typeof rawProgramScopeTable === "object" && Array.isArray(rawProgramScopeTable.rows))
@@ -974,6 +1060,13 @@ function normalizePayload(payload) {
     languageName,
     locale,
     currencyCode,
+    programStatusCreatedFromDate: cleanInlineText(
+      payload.programStatusCreatedFromDate ||
+      payload.programStatusCreatedFromDateRaw ||
+      nestedPayload.programStatusCreatedFromDate ||
+      nestedPayload.programStatusCreatedFromDateRaw ||
+      ""
+    ),
     fullContent: payload.fullContent !== false,
     includeAppendix: payload.includeAppendix === true,
     debug: payload.debug === true,
@@ -1005,7 +1098,9 @@ function cleanDeltaText(value) {
   const text = cleanInlineText(value || "");
   if (!text) return "";
   return text
-    .replace(/[\u25B2\u25BC\u25B3\u25BD\u25B4\u25BE]/g, "")
+    .replace(MOJIBAKE_DIRECTION_MARK_REGEX, "")
+    .replace(DIRECTION_MARK_REGEX, "")
+    .replace(/\uFFFD/g, "")
     .replace(/\s+/g, " ")
     .trim();
 }
@@ -1016,7 +1111,7 @@ function metricCard(metric) {
     ? `${metric.current} vs ${metric.previous} PY`
     : `${metric.current}`;
   const varianceText = cleanDeltaText(metric.variance);
-  const summary = varianceText ? `${comparison} - ${varianceText}` : comparison;
+  const summary = varianceText ? `${comparison} ${varianceText}` : comparison;
   return {
     label: metric.label,
     value: metric.current,
@@ -1138,16 +1233,16 @@ function movementVerb(metric, positive = "increased", negative = "decreased") {
 }
 
 function buildExecutiveSummaryText(input) {
-  const selectedProgramIds = Array.isArray(input.analysisProgramIds)
-    ? input.analysisProgramIds.map((value) => cleanInlineText(value)).filter(Boolean)
-    : [];
-  const selectedProgramCount = new Set(selectedProgramIds).size;
-  const isMultiProgramScope = selectedProgramCount > 1;
+  const publisherLabel = cleanInlineText(input.client || "the publisher");
+  const connectedProgramScope = `all programs connected to ${publisherLabel}`;
 
   const providedSummary = cleanDeltaText(input.executiveSummaryText || "");
   if (providedSummary) {
-    const providedLooksMultiProgram = /selected programs?|all programs?|combined|portfolio|across\s+\d+\s+programs?/i.test(providedSummary);
-    if (!isMultiProgramScope || providedLooksMultiProgram) return providedSummary;
+    const scopeCorrectedSummary = providedSummary
+      .replace(/\bAcross\s+\d+\s+selected\s+programs\b/i, `Across ${connectedProgramScope}`)
+      .replace(/\bAcross\s+selected\s+programs\b/i, `Across ${connectedProgramScope}`);
+    const providedLooksFullPublisherScope = /all programs?|connected programs?|connected to|combined|portfolio/i.test(scopeCorrectedSummary);
+    if (providedLooksFullPublisherScope) return scopeCorrectedSummary;
   }
 
   const m = input.metricMap || {};
@@ -1158,11 +1253,8 @@ function buildExecutiveSummaryText(input) {
   const digitalWallet = m.digitalwallet || {};
   const totalEarnings = m.totalearnings || m.totalcommission || {};
 
-  const publisherLabel = cleanInlineText(input.client || "Publisher");
   const periodLabel = parsePeriodRange(input.reportingPeriod, input.locale);
-  const openingLine = isMultiProgramScope
-    ? `Across ${selectedProgramCount} selected programs, performance was mixed in ${periodLabel}.`
-    : `${publisherLabel} performance was mixed in ${periodLabel}.`;
+  const openingLine = `Across ${connectedProgramScope}, performance was mixed in ${periodLabel}.`;
 
   return cleanDeltaText(
     `${openingLine} Conversions moved ${cleanDeltaText(conversions.variance) || "N/A"} to ${conversions.current || "-"} and conversion rate moved ${cleanDeltaText(conv.variance) || "N/A"} to ${conv.current || "-"}. Publisher commission ${movementVerb(publisherCommission)} ${cleanDeltaText(publisherCommission.variance) || "N/A"} to ${publisherCommission.current || "-"}, while digital wallet earnings ${movementVerb(digitalWallet)} ${cleanDeltaText(digitalWallet.variance) || "N/A"} to ${digitalWallet.current || "-"}. Total earnings ended at ${totalEarnings.current || "-"} (${cleanDeltaText(totalEarnings.variance) || "N/A"}) and total order value ${movementVerb(ov)} ${cleanDeltaText(ov.variance) || "N/A"} to ${ov.current || "-"}.`
@@ -1558,6 +1650,100 @@ function buildCompetitorAnalysisTable(table) {
   };
 }
 
+function competitorDisplayLabel(label, index) {
+  const cleaned = cleanInlineText(label || "");
+  if (index === 0 || /^(your site|primary publisher|primary site)$/i.test(cleaned)) return "Your Site";
+  const letter = String.fromCharCode(64 + index);
+  if (/^publisher\s*\d+$/i.test(cleaned) || /^competitor\s*\d+$/i.test(cleaned)) return `Comp. ${letter}`;
+  return compactLabel(cleaned || `Comp. ${letter}`, 14);
+}
+
+function findCompetitorShareRow(rows, mode = "current") {
+  const candidates = rows.filter((row) => {
+    const metric = cleanInlineText(row.metric || "").toLowerCase();
+    if (!/(pub|publisher).*(comm|commission)|commission/.test(metric)) return false;
+    if (/distinct|program\s*#|count|with\s+pub|programs\s+with/i.test(metric)) return false;
+    return true;
+  });
+
+  if (mode === "previous") {
+    return candidates.find((row) => /(previous|prior|comparison|baseline|\bpy\b|\bpp\b)/i.test(row.metric)) || null;
+  }
+
+  return candidates.find((row) => !/(previous|prior|comparison|baseline|\bpy\b|\bpp\b)/i.test(row.metric))
+    || candidates[0]
+    || null;
+}
+
+function buildCompetitorSharePubCommChart(shareTable, analysisTable) {
+  const source = shareTable && Array.isArray(shareTable.rows) && shareTable.rows.length
+    ? shareTable
+    : analysisTable;
+  const fallbackColumns = ["Your Site", "Comp. A", "Comp. B", "Comp. C", "Comp. D"];
+  if (!source || !Array.isArray(source.rows) || !source.rows.length) {
+    return {
+      type: "competitor-share-pub-comm",
+      title: "Share of publisher commission within competitor group",
+      categories: fallbackColumns,
+      series: []
+    };
+  }
+
+  const sourceColumns = Array.isArray(source.columns) ? source.columns : Object.keys(source.rows[0] || {});
+  const metricColumn = sourceColumns.find((column) => /^competitor group summary$/i.test(cleanInlineText(column)))
+    || sourceColumns.find((column) => /^metric$/i.test(cleanInlineText(column)))
+    || sourceColumns[0]
+    || "Metric";
+  const valueColumns = sourceColumns
+    .filter((column) => column !== metricColumn && column !== "_columns")
+    .filter((column) => !/distinct|program\s*#|count/i.test(cleanInlineText(column)))
+    .slice(0, 5);
+
+  const normalizedRows = source.rows.map((row) => ({
+    metric: row[metricColumn] || "",
+    values: valueColumns.map((column) => parseNumber(row[column]) || 0)
+  }));
+  const rowsFromColumns = valueColumns.length && source.rows.some((row) =>
+    valueColumns.some((column) => parseNumber(row[column]) !== null)
+  );
+  if (!rowsFromColumns) {
+    return {
+      type: "competitor-share-pub-comm",
+      title: "Share of publisher commission within competitor group",
+      categories: fallbackColumns,
+      series: []
+    };
+  }
+
+  const toShareValues = (values) => {
+    const total = values.reduce((sum, value) => sum + Math.max(0, Number(value) || 0), 0);
+    if (total <= 0) return values.map(() => 0);
+    return values.map((value) => Number((((Math.max(0, Number(value) || 0) / total) * 100).toFixed(1))));
+  };
+  const current = findCompetitorShareRow(normalizedRows, "current");
+  const previous = findCompetitorShareRow(normalizedRows, "previous");
+  const series = [];
+  if (previous) {
+    series.push({
+      label: "% of Site Group PP",
+      values: toShareValues(previous.values)
+    });
+  }
+  if (current) {
+    series.push({
+      label: "% of Site Group",
+      values: toShareValues(current.values)
+    });
+  }
+
+  return {
+    type: "competitor-share-pub-comm",
+    title: "Share of publisher commission within competitor group",
+    categories: valueColumns.map((column, index) => competitorDisplayLabel(column, index)),
+    series
+  };
+}
+
 function buildTopProgramsCompetitorPerformanceTable(table) {
   const fallbackColumns = ["Program Name", "Primary Publisher", "Comp. A", "Comp. B", "Comp. C", "Comp. D"];
   if (!table || !Array.isArray(table.rows) || !table.rows.length) {
@@ -1608,12 +1794,15 @@ function buildWeeklyPubCommComboChart(table) {
   const categories = table.rows.map((row) => cleanInlineText(row[categoryColumn] || "-"));
   const series = seriesColumns.map((column, index) => ({
     label: cleanInlineText(column || `Series ${index + 1}`),
-    renderAs: index === 0 ? "bar" : "line",
-    values: table.rows.map((row) => parseNumber(row[column]) || 0)
+    renderAs: "line",
+    values: table.rows.map((row) => {
+      const value = parseNumber(row[column]);
+      return value === null ? null : value;
+    })
   }));
 
   return {
-    type: "weekly-pub-comm-combo",
+    type: "weekly-pub-comm-line",
     title: "Publ comm by week",
     categories,
     series
@@ -2107,6 +2296,328 @@ function buildTopNewProgramsTable(table) {
   };
 }
 
+const CONNECTION_STATUS_META = [
+  { id: 3, label: "Accepted", shortLabel: "Accepted", color: "#57A66C", sortRank: 0 },
+  { id: 1, label: "Under Consideration", shortLabel: "Under Cons.", color: "#AFC4F5", sortRank: 1, aliases: ["Under consideration"] },
+  { id: 2, label: "Hold Under Consideration", shortLabel: "Hold UC", color: "#F2C94C", sortRank: 2, aliases: ["Hold UC"] },
+  { id: 0, label: "Not Connected", shortLabel: "Not Conn.", color: "#8A94A6", sortRank: 3 },
+  { id: 6, label: "Hold Accepted", shortLabel: "Hold Acc.", color: "#F2994A", sortRank: 4 },
+  { id: 9, label: "Ending", shortLabel: "Ending", color: "#9B51E0", sortRank: 5 },
+  { id: 4, label: "Ended", shortLabel: "Ended", color: "#5B6372", sortRank: 6 },
+  { id: 5, label: "Denied", shortLabel: "Denied", color: "#EB5757", sortRank: 7, aliases: ["Rejected"] }
+];
+
+const CONNECTION_STATUS_BY_ID = new Map(CONNECTION_STATUS_META.map((item) => [String(item.id), item]));
+const CONNECTION_STATUS_BY_LABEL = new Map(
+  CONNECTION_STATUS_META.flatMap((item) => [item.label, item.shortLabel, ...(item.aliases || [])]
+    .filter(Boolean)
+    .map((label) => [label.toLowerCase(), item]))
+);
+
+function connectionStatusMeta(statusId, statusText) {
+  const idKey = cleanInlineText(statusId || "");
+  if (CONNECTION_STATUS_BY_ID.has(idKey)) return CONNECTION_STATUS_BY_ID.get(idKey);
+  const textKey = cleanInlineText(statusText || "").toLowerCase();
+  if (CONNECTION_STATUS_BY_LABEL.has(textKey)) return CONNECTION_STATUS_BY_LABEL.get(textKey);
+  return { id: idKey || "-", label: cleanInlineText(statusText || "Unknown"), shortLabel: cleanInlineText(statusText || "Unknown"), color: "#8A94A6" };
+}
+
+function buildProgramConnectionStatusTable(table) {
+  const sourceRows = table && Array.isArray(table.rows) ? table.rows : [];
+  const rows = sourceRows
+    .map((row) => {
+      const programId = readTableCell(row, ["Program ID", "ProgramID", "Program Id", "ID", "id"]);
+      const programName = readTableCell(row, ["Program Name", "Program", "Name", "name"]);
+      const statusId = readTableCell(row, ["Status ID", "StatusId", "statusId", "Connection Status ID"]);
+      const status = readTableCell(row, ["Connection Status", "Status", "Status Name", "statusName"]);
+      const createdDate = readTableCell(row, ["Created Date", "Created", "createdDate"]);
+      const meta = connectionStatusMeta(statusId, status);
+      return {
+        programId: cleanInlineText(programId || ""),
+        programName: cleanInlineText(programName || ""),
+        statusId: cleanInlineText(statusId || String(meta.id || "")),
+        status: meta.label,
+        shortStatus: meta.shortLabel,
+        color: meta.color,
+        sortRank: Number.isFinite(meta.sortRank) ? meta.sortRank : 99,
+        createdDate: cleanInlineText(createdDate || "")
+      };
+    })
+    .filter((row) => row.programId || row.programName)
+    .sort((a, b) => {
+      if (a.sortRank !== b.sortRank) return a.sortRank - b.sortRank;
+      const byName = String(a.programName || "").localeCompare(String(b.programName || ""), "en", { sensitivity: "base" });
+      if (byName !== 0) return byName;
+      return String(a.programId || "").localeCompare(String(b.programId || ""), "en", { sensitivity: "base", numeric: true });
+    });
+
+  const counts = {};
+  rows.forEach((row) => {
+    counts[row.status] = (counts[row.status] || 0) + 1;
+  });
+
+  return {
+    title: "Program Connection Status",
+    rows,
+    counts,
+    key: CONNECTION_STATUS_META
+  };
+}
+
+function formatCompactCurrency(value, currencyCode, locale = "en-GB") {
+  const symbol = getCurrencySymbol(currencyCode);
+  const n = Number(value);
+  if (!Number.isFinite(n)) return `${symbol}0`;
+  const abs = Math.abs(n);
+  const sign = n < 0 ? "-" : "";
+  if (abs >= 1000000) {
+    return `${sign}${symbol}${(abs / 1000000).toLocaleString(locale, {
+      minimumFractionDigits: abs % 1000000 === 0 ? 0 : 1,
+      maximumFractionDigits: 1
+    })}m`;
+  }
+  if (abs >= 1000) {
+    return `${sign}${symbol}${(abs / 1000).toLocaleString(locale, {
+      minimumFractionDigits: abs % 1000 === 0 ? 0 : 1,
+      maximumFractionDigits: 1
+    })}k`;
+  }
+  return formatMoneyAmount(n, currencyCode, locale, { decimals: 0 });
+}
+
+function buildProgramGapAnalysisImpact(table, input) {
+  const sourceRows = table && Array.isArray(table.rows) ? table.rows : [];
+  const rows = sourceRows
+    .map((row) => {
+      const competitorPubComm = parseNumber(readTableCell(row, [
+        "Competitor Pub Comm",
+        "Competitor Commission Opportunity",
+        "Pub Comm - Specified Sites",
+        "Opportunity",
+        "Value"
+      ])) || 0;
+      const gapType = readTableCell(row, ["Gap Type", "Type", "Bucket"]) || "Review";
+      const action = readTableCell(row, ["Recommended Action", "Action", "Next Step"]) || "Review";
+      const primaryStatus = readTableCell(row, [
+        input.client,
+        "Primary Publisher",
+        "Primary Publisher Status",
+        "VoucherCodes",
+        "TopCashBack",
+        "Status"
+      ]) || "Review";
+      const programName = readTableCell(row, ["Program Name", "Program", "Name"]) || "Program";
+      return {
+        programName,
+        primaryStatus,
+        competitorPubComm,
+        gapType,
+        action
+      };
+    })
+    .filter((row) => row.programName && (row.competitorPubComm > 0 || row.primaryStatus || row.gapType));
+
+  if (!rows.length) return null;
+
+  const totalOpportunity = rows.reduce((sum, row) => sum + row.competitorPubComm, 0);
+  const activationRows = rows.filter((row) => /activation/i.test(row.gapType) || /^accepted$/i.test(row.primaryStatus));
+  const applicationRows = rows.filter((row) => /application/i.test(row.gapType) || /no connection/i.test(row.primaryStatus));
+  const clickRows = rows.filter((row) => /click/i.test(row.gapType) || /^clicks$/i.test(row.primaryStatus));
+  const recoveryRows = rows.filter((row) => /recovery/i.test(row.gapType) || /denied|ended|hold/i.test(row.primaryStatus));
+  const activationValue = activationRows.reduce((sum, row) => sum + row.competitorPubComm, 0);
+  const leadingGap = rows
+    .slice()
+    .sort((a, b) => b.competitorPubComm - a.competitorPubComm)[0];
+
+  return {
+    totalOpportunity,
+    totalOpportunityDisplay: formatCompactCurrency(totalOpportunity, input.currencyCode, input.locale),
+    totalPrograms: rows.length,
+    activationPrograms: activationRows.length,
+    applicationPrograms: applicationRows.length,
+    clickPrograms: clickRows.length,
+    recoveryPrograms: recoveryRows.length,
+    activationValueDisplay: formatCompactCurrency(activationValue, input.currencyCode, input.locale),
+    leadingProgram: compactLabel(leadingGap.programName, 34),
+    leadingProgramValue: formatCompactCurrency(leadingGap.competitorPubComm, input.currencyCode, input.locale)
+  };
+}
+
+function gapPriorityRank(row) {
+  const gap = cleanInlineText(row.gapType || "").toLowerCase();
+  const status = cleanInlineText(row.primaryStatus || "").toLowerCase();
+  if (/activation/.test(gap) || /^accepted$/.test(status)) return 0;
+  if (/click/.test(gap) || /^clicks$/.test(status)) return 1;
+  if (/application/.test(gap) || /no connection/.test(status)) return 2;
+  if (/recovery/.test(gap) || /denied|ended|hold/.test(status)) return 3;
+  return 4;
+}
+
+function formatGapRegisterOpportunity(rawValue, numericValue, currencyCode, locale) {
+  const raw = cleanInlineText(rawValue || "");
+  const symbol = getCurrencySymbol(currencyCode);
+  if (/^</.test(raw)) {
+    const compact = raw
+      .replace(/\bGBP\b/gi, symbol)
+      .replace(/\s+/g, "")
+      .replace(new RegExp(`^<${symbol}?`, "i"), `<${symbol}`);
+    return compact || `<${symbol}100`;
+  }
+  const n = Number(numericValue);
+  if (Number.isFinite(n) && n > 0) {
+    return formatMoneyAmount(n, currencyCode, locale, { decimals: 0 });
+  }
+  return `${symbol}-`;
+}
+
+function buildProgramGapAnalysis(table, input) {
+  const sourceRows = table && Array.isArray(table.rows) ? table.rows : [];
+  const columns = table && Array.isArray(table.columns) ? table.columns : Object.keys(sourceRows[0] || {});
+  const primaryAliases = [
+    input.client,
+    "Primary Publisher",
+    "Primary Publisher Status",
+    "VoucherCodes",
+    "TopCashBack",
+    "Status"
+  ].map((item) => cleanInlineText(item).toLowerCase()).filter(Boolean);
+  const knownColumns = new Set([
+    "program name",
+    "program",
+    "name",
+    "program id",
+    "programid",
+    "id",
+    "competitor pub comm",
+    "competitor commission opportunity",
+    "pub comm - specified sites",
+    "opportunity",
+    "value",
+    "gap type",
+    "type",
+    "bucket",
+    "recommended action",
+    "action",
+    "next step",
+    ...primaryAliases
+  ]);
+  const competitorColumns = columns
+    .filter((column) => !knownColumns.has(cleanInlineText(column).toLowerCase()))
+    .slice(0, 4);
+
+  const rows = sourceRows
+    .map((row) => {
+      const rawCompetitorPubComm = readTableCell(row, [
+        "Competitor Pub Comm",
+        "Competitor Commission Opportunity",
+        "Pub Comm - Specified Sites",
+        "Opportunity",
+        "Value"
+      ]);
+      const competitorPubComm = parseNumber(readTableCell(row, [
+        "Competitor Pub Comm",
+        "Competitor Commission Opportunity",
+        "Pub Comm - Specified Sites",
+        "Opportunity",
+        "Value"
+      ])) || 0;
+      const programName = readTableCell(row, ["Program Name", "Program", "Name"]) || "Program";
+      const programId = readTableCell(row, ["Program ID", "ProgramID", "Program Id", "ID", "id"]);
+      const primaryStatus = readTableCell(row, [
+        input.client,
+        "Primary Publisher",
+        "Primary Publisher Status",
+        "VoucherCodes",
+        "TopCashBack",
+        "Status"
+      ]) || "Review";
+      const gapType = readTableCell(row, ["Gap Type", "Type", "Bucket"]) || "Review";
+      const action = readTableCell(row, ["Recommended Action", "Action", "Next Step"]) || "Review";
+      const competitorStatuses = competitorColumns
+        .map((column) => readTableCell(row, [column]))
+        .filter(Boolean);
+      const earningCompetitors = competitorStatuses.filter((status) => /^pub comm$/i.test(status)).length;
+      return {
+        programName: cleanInlineText(programName),
+        programId: cleanInlineText(programId),
+        primaryStatus: cleanInlineText(primaryStatus),
+        competitorPubComm,
+        competitorPubCommDisplay: formatCompactCurrency(competitorPubComm, input.currencyCode, input.locale),
+        registerOpportunityDisplay: formatGapRegisterOpportunity(rawCompetitorPubComm, competitorPubComm, input.currencyCode, input.locale),
+        gapType: cleanInlineText(gapType),
+        action: cleanInlineText(action),
+        competitorSignal: competitorStatuses.length
+          ? `${earningCompetitors}/${competitorStatuses.length} competitors earning`
+          : (competitorPubComm > 0 ? "Competitor earning signal" : "No competitor earning signal"),
+        priorityRank: 0
+      };
+    })
+    .filter((row) => row.programName && (row.competitorPubComm > 0 || row.primaryStatus || row.gapType))
+    .map((row) => ({ ...row, priorityRank: gapPriorityRank(row) }))
+    .sort((a, b) => {
+      if (a.priorityRank !== b.priorityRank) return a.priorityRank - b.priorityRank;
+      if (b.competitorPubComm !== a.competitorPubComm) return b.competitorPubComm - a.competitorPubComm;
+      return a.programName.localeCompare(b.programName, "en", { sensitivity: "base" });
+    });
+
+  if (!rows.length) return null;
+
+  return {
+    impact: buildProgramGapAnalysisImpact(table, input),
+    rows
+  };
+}
+
+function paginateProgramGapAnalysisRegister(programGapAnalysis) {
+  const rows = Array.isArray(programGapAnalysis?.rows) ? programGapAnalysis.rows : [];
+  if (!rows.length) return [];
+  const columnCount = 3;
+  const rowsPerColumn = 22;
+  const pageSize = columnCount * rowsPerColumn;
+  const pageCount = Math.max(1, Math.ceil(rows.length / pageSize));
+  return Array.from({ length: pageCount }, (_, pageIndex) => {
+    const start = pageIndex * pageSize;
+    return {
+      rows: rows.slice(start, start + pageSize),
+      totalRows: rows.length,
+      pageIndex,
+      pageCount,
+      columnCount,
+      rowsPerColumn
+    };
+  });
+}
+
+function programConnectionStatusColumnCount(rowCount) {
+  if (rowCount > 100) return 6;
+  if (rowCount > 72) return 5;
+  return 4;
+}
+
+function programConnectionStatusRowsPerSlide(rowCount) {
+  const columns = programConnectionStatusColumnCount(rowCount);
+  return columns * 14;
+}
+
+function paginateProgramConnectionStatus(programConnectionStatus, cutoffDate) {
+  const rows = Array.isArray(programConnectionStatus.rows) ? programConnectionStatus.rows : [];
+  if (!rows.length) return [];
+
+  const pageSize = programConnectionStatusRowsPerSlide(rows.length);
+  const pageCount = Math.max(1, Math.ceil(rows.length / pageSize));
+  return Array.from({ length: pageCount }, (_, pageIndex) => {
+    const start = pageIndex * pageSize;
+    return {
+      ...programConnectionStatus,
+      rows: rows.slice(start, start + pageSize),
+      totalRows: rows.length,
+      pageIndex,
+      pageCount,
+      cutoffDate: cleanInlineText(cutoffDate || "")
+    };
+  });
+}
+
 function buildProgramActivationSnapshot(table) {
   const rows = table && Array.isArray(table.rows) ? table.rows : [];
   const labelMap = new Map([
@@ -2370,10 +2881,125 @@ function buildCostCallout(input) {
   return base;
 }
 
+function buildRiskMitigation(riskType, evidence) {
+  const combined = `${riskType} ${evidence}`.toLowerCase();
+  if (/traffic|click/.test(combined) && /zero|0\s+conversion|no conversion/.test(combined)) {
+    return "Pause scale-up until the publisher has tested the tracking link, landing page, and voucher route with a small controlled traffic sample that produces at least one verified conversion.";
+  }
+  if (/new|brand-new|activated|activation|joined/.test(combined) && /(zero|0|no)\s*(ov|order value|conversion|earning|commission)/.test(combined)) {
+    return "For each zero-output new program, confirm tracking is live, add one visible launch placement or voucher, and set a first-week conversion target before adding more exposure.";
+  }
+  if (/concentration|dependency|dependenc|top\s+\d+/.test(combined)) {
+    return "Protect the leading program's placement while adding two similar programs into the next campaign rotation so commission is not dependent on one partner.";
+  }
+  if (/traffic|click|landing/.test(combined) && /conversion|tracking|leak/.test(combined)) {
+    return "Audit the affected program's landing path, voucher validity, and tracking parameters, then retest with one high-intent placement before increasing traffic.";
+  }
+  if (/decline|decrease|drop|down|negative|loss|fall|fell/.test(combined)) {
+    return "Compare the program with its prior top-performing period, restore the best placement or offer that changed, and run a two-week recovery test against the lost metric.";
+  }
+  if (/commission|cpa|cost/.test(combined)) {
+    return "Model commission against conversion value, reduce exposure on low-value traffic, and test a capped incentive where expected order value covers the payout.";
+  }
+  if (/order value|ov|aov/.test(combined)) {
+    return "Prioritise higher-basket placements or bundles with the affected programs, then track order value and conversion mix before adding more low-value volume.";
+  }
+  if (/conversion|tracking/.test(combined)) {
+    return "Check voucher validity, landing-page speed, and tracking handoff, then rerun the placement with the traffic source that historically converted best.";
+  }
+  return "Turn the finding into one controlled publisher test with a named program, target metric, start date, and success threshold for the next review.";
+}
+
+function formatRiskRationale(programName, riskType, evidence) {
+  const program = cleanInlineText(programName || "");
+  const risk = cleanInlineText(riskType || "Performance variance");
+  const proof = cleanInlineText(evidence || "").replace(/[.]+$/g, "");
+  const prefix = program ? `${program}: ${risk}` : risk;
+  return proof ? `${prefix}. Evidence: ${proof}.` : prefix;
+}
+
+function compactRiskRationale(value, maxLen = 150) {
+  const text = cleanInlineText(value || "")
+    .replace(/\bEvidence:\s*/i, "")
+    .replace(/\s+/g, " ")
+    .trim();
+  if (!text || text.length <= maxLen) return text;
+  const firstSentence = text.match(/^(.{40,}?[.!?])\s+/);
+  if (firstSentence && firstSentence[1].length <= maxLen) return firstSentence[1];
+  const clipped = text.slice(0, maxLen);
+  const lastSpace = clipped.lastIndexOf(" ");
+  return (lastSpace > 80 ? clipped.slice(0, lastSpace) : clipped).trimEnd();
+}
+
+function buildRiskTileText(riskType, evidence, programName = "", action = "") {
+  const rationale = compactRiskRationale(formatRiskRationale(programName, riskType, evidence), 210);
+  const nextStep = cleanInlineText(action || buildRiskMitigation(riskType, evidence));
+  return nextStep ? `${rationale} Action: ${nextStep}` : rationale;
+}
+
+function formatProgramList(names, limit = 10) {
+  const unique = Array.from(new Set(
+    (names || [])
+      .map((name) => cleanInlineText(name || ""))
+      .filter(Boolean)
+  ));
+  if (!unique.length) return "";
+  const visible = unique.slice(0, limit).join(", ");
+  const hidden = unique.length - limit;
+  return hidden > 0 ? `${visible}, +${hidden} more` : visible;
+}
+
+function buildZeroOrderValueActivationRisk(input) {
+  const brandNew = input.tables.brandNewPublishers;
+  const rows = brandNew && Array.isArray(brandNew.rows) ? brandNew.rows : [];
+  if (!rows.length) return null;
+
+  const zeroOvRows = rows.filter((row) => {
+    const orderValue = parseNumber(readTableCell(row, ["Order Value", "Current OV", "Current Order Value", "CurrentOrderValue", "CurrentOV"]));
+    const conversions = parseNumber(readTableCell(row, ["Conversions", "Current Conversions", "Sales", "Current Sales"]));
+    const totalEarnings = parseNumber(readTableCell(row, ["Total Earnings", "Total Earning", "TotalEarnings"]));
+    return (orderValue || 0) <= 0 && (conversions || 0) <= 0 && (totalEarnings || 0) <= 0;
+  });
+
+  if (!zeroOvRows.length) return null;
+
+  const names = zeroOvRows.map((row) => readTableCell(row, ["Program Name", "Program", "Name"]));
+  const namedPrograms = formatProgramList(names);
+  const riskType = "New programs activated with no recorded OV";
+  const evidence = `${zeroOvRows.length} of ${rows.length} new programs show 0 order value, 0 conversions, and 0 total earnings${namedPrograms ? `: ${namedPrograms}` : ""}`;
+  const impact = zeroOvRows.length === rows.length ? "High" : "Medium";
+
+  return [
+    buildRiskTileText(riskType, evidence, namedPrograms || "New programs")
+  ];
+}
+
+function buildStructuredRiskRows(input) {
+  const table = input.tables.riskDependenciesTable;
+  const rows = table && Array.isArray(table.rows) ? table.rows : [];
+  return rows
+    .map((row) => {
+      const programName = readTableCell(row, ["Program Name", "Program", "Name"]);
+      const riskType = readTableCell(row, ["Risk Type", "Risk", "Risk / Dependency", "Issue", "Dependency", "Theme", "Area"]) || "Performance variance";
+      const evidence = readTableCell(row, ["Evidence", "Analysis", "Rationale", "Reason", "Impact Detail", "Dependency Detail", "Detail", "Details", "Observation"]);
+      const providedMitigation = readTableCell(row, ["Mitigation", "Action", "Recommended Action", "Recommendation", "Next Step", "Next Steps", "Owner Action"]);
+      return [
+        buildRiskTileText(riskType, evidence, programName, providedMitigation)
+      ];
+    })
+    .filter((row) => row.some(Boolean));
+}
+
 function buildRiskRows(input) {
+  const structuredRows = buildStructuredRiskRows(input);
+  const activationRisk = buildZeroOrderValueActivationRisk(input);
+  if (activationRisk) return [...structuredRows.slice(0, 3), activationRisk].slice(0, 4);
+  if (structuredRows.length) return structuredRows.slice(0, 4);
+
   const sourceLines = [];
-  const appendLines = (lines) => {
+  const appendLines = (lines, limit = 4) => {
     (lines || []).forEach((line) => {
+      if (sourceLines.length >= limit) return;
       const text = publisherAnalysisToProgramContext(line);
       if (!text) return;
       if (sourceLines.some((existing) => existing.toLowerCase() === text.toLowerCase())) return;
@@ -2382,8 +3008,8 @@ function buildRiskRows(input) {
   };
 
   appendLines(input.publisherOverviewObservations);
-  appendLines(buildPublisherOverviewBullets(input));
-  appendLines(buildKpiAnalysisBullets(input));
+  if (sourceLines.length < 2) appendLines(buildPublisherOverviewBullets(input));
+  if (sourceLines.length < 2) appendLines(buildKpiAnalysisBullets(input));
 
   const inferRiskLabel = (text) => {
     const lower = cleanInlineText(text).toLowerCase();
@@ -2404,30 +3030,22 @@ function buildRiskRows(input) {
   };
 
   const rows = sourceLines
-    .slice(0, 5)
+    .slice(0, 4)
     .map((line) => [
-      inferRiskLabel(line),
-      inferImpact(line),
-      line
+      buildRiskTileText(inferRiskLabel(line), line)
     ]);
 
   if (rows.length) return rows;
 
   return [
     [
-      "Program concentration risk",
-      "High",
-      "Program concentration remains elevated; diversify program mix and reduce reliance on the top contributors."
+      buildRiskTileText("Program concentration risk", "Contribution is concentrated in the top programs.")
     ],
     [
-      "Rising CPA trend",
-      "High",
-      "Review commission structure and cost controls where CPA growth is outpacing sales efficiency."
+      buildRiskTileText("Rising CPA trend", "CPA growth is outpacing sales efficiency.")
     ],
     [
-      "Traffic decline",
-      "Medium",
-      "Investigate traffic source quality and reactivate declining programs with the strongest historical contribution."
+      buildRiskTileText("Traffic decline", "Traffic quality or volume is below the prior benchmark.")
     ]
   ];
 }
@@ -2464,7 +3082,7 @@ function buildDeckSpec(input, theme) {
     ["convrate", "Conversion Rate"],
     ["clicks", "Clicks"],
     ["earningsperclick", "Earnings per Click"],
-    ["earningspercommission", "Earnings per Commission"],
+    ["earningsperconversion", "Earnings per Conversion"],
     ["ordervalue", "Total Order Value"],
     ["publcommission", "Publisher Commission"],
     ["digitalwallet", "Digital Wallet"],
@@ -2473,8 +3091,17 @@ function buildDeckSpec(input, theme) {
   ]);
 
   const brandNew = input.tables.brandNewPublishers;
+  const programConnectionStatus = buildProgramConnectionStatusTable(input.tables.programConnectionStatusTable);
+  const programConnectionStatusPages = paginateProgramConnectionStatus(
+    programConnectionStatus,
+    input.programStatusCreatedFromDate
+  );
+  const programGapAnalysis = buildProgramGapAnalysis(input.tables.programGapAnalysisTable, input);
+  const programGapAnalysisImpact = programGapAnalysis?.impact;
+  const programGapAnalysisRegisterPages = paginateProgramGapAnalysisRegister(programGapAnalysis);
   const moversCommissionChart = buildMoversCommissionBarChart(input.tables.moversCommissionChart || input.tables.moversCommission, input.locale);
   const competitorAnalysis = buildCompetitorAnalysisTable(input.tables.competitorAnalysisTable);
+  const competitorShareChart = buildCompetitorSharePubCommChart(input.tables.competitorSharePubCommChart, input.tables.competitorAnalysisTable);
   const competitorWeeklyChart = buildWeeklyPubCommComboChart(input.tables.competitorWeeklyPubCommChart);
   const topProgramsCompetitorPerformance = buildTopProgramsCompetitorPerformanceTable(input.tables.topProgramsCompetitorPerformanceTable);
   const activationSnapshot = buildProgramActivationSnapshot(input.tables.programActivationSnapshotTable);
@@ -2577,13 +3204,74 @@ function buildDeckSpec(input, theme) {
   });
 
   slides.push({
-    id: "kpi-highlights",
-    kind: "insights-blue",
-    title: "KPI Highlights & Business Implications",
-    subtitle: "What the numbers mean for the business - key signals and context.",
-    bullets: kpiAnalysisBullets,
+    id: "brand-new-publishers",
+    kind: "publisher-table",
+    title: "Top 10 New Programs",
+    subtitle: "Programs joined or first active for the primary publisher in the current period.",
+    bullets: [],
     kpis: [],
-    tables: []
+    tables: [
+      buildTopNewProgramsTable(brandNew)
+    ],
+    callout: "New programs are included where current-period activity exists and no prior-period baseline was found."
+  });
+
+  if (programGapAnalysisImpact) {
+    slides.push({
+      id: "gap-analysis-impact",
+      kind: "gap-analysis-impact",
+      title: "Growth opportunity in the competitor gap",
+      subtitle: "",
+      bullets: [],
+      kpis: [
+        {
+          label: "Competitor pub comm opportunity",
+          value: programGapAnalysisImpact.totalOpportunityDisplay,
+          summary: `${programGapAnalysisImpact.totalPrograms} programs where the primary publisher is not earning`
+        },
+        {
+          label: "Gap programs",
+          value: String(programGapAnalysisImpact.totalPrograms),
+          summary: "Programs requiring activation, application or recovery"
+        },
+        {
+          label: "Activation opportunities",
+          value: String(programGapAnalysisImpact.activationPrograms),
+          summary: `${programGapAnalysisImpact.activationValueDisplay} already accepted but inactive`
+        }
+      ],
+      tables: [],
+      gapImpact: programGapAnalysisImpact
+    });
+    programGapAnalysisRegisterPages.forEach((gapRegisterPage, pageIndex) => {
+      slides.push({
+        id: pageIndex === 0 ? "gap-analysis-register" : `gap-analysis-register-${pageIndex + 1}`,
+        kind: "gap-analysis-register",
+        title: gapRegisterPage.pageCount > 1
+          ? `Gap Analysis Register (${pageIndex + 1}/${gapRegisterPage.pageCount})`
+          : "Gap Analysis Register",
+        subtitle: `${gapRegisterPage.totalRows} programs reviewed | Connection status and Pub Comm - Specified Sites`,
+        bullets: [],
+        kpis: [],
+        tables: [],
+        gapRegister: gapRegisterPage
+      });
+    });
+  }
+
+  programConnectionStatusPages.forEach((programConnectionStatusPage, pageIndex) => {
+    slides.push({
+      id: pageIndex === 0 ? "program-connection-status" : `program-connection-status-${pageIndex + 1}`,
+      kind: "program-connection-status",
+      title: programConnectionStatusPages.length > 1
+        ? `Program Connection Status (${pageIndex + 1}/${programConnectionStatusPages.length})`
+        : "Program Connection Status",
+      subtitle: "",
+      bullets: [],
+      kpis: [],
+      tables: [],
+      programConnectionStatus: programConnectionStatusPage
+    });
   });
 
   slides.push({
@@ -2599,6 +3287,17 @@ function buildDeckSpec(input, theme) {
   });
 
   slides.push({
+    id: "competitor-share-pub-comm",
+    kind: "competitor-share-bar-chart",
+    title: "Share Within Competitor Group",
+    subtitle: "Publisher commission share for the primary publisher and four comparison publishers.",
+    bullets: [],
+    kpis: [],
+    tables: [],
+    chart: competitorShareChart
+  });
+
+  slides.push({
     id: "top-programs-competitor-performance",
     kind: "competitor-performance-table",
     title: "Top Programs Competitor Performance",
@@ -2609,30 +3308,27 @@ function buildDeckSpec(input, theme) {
   });
 
   slides.push({
-    id: "brand-new-publishers",
-    kind: "publisher-table",
-    title: "Top 10 New Programs",
-    subtitle: "Programs joined or first active for the primary publisher in the current period.",
-    bullets: [],
+    id: "kpi-highlights",
+    kind: "insights-blue",
+    title: "KPI Highlights & Business Implications",
+    subtitle: "What the numbers mean for the business - key signals and context.",
+    bullets: kpiAnalysisBullets,
     kpis: [],
-    tables: [
-      buildTopNewProgramsTable(brandNew)
-    ],
-    callout: "New programs are included where current-period activity exists and no prior-period baseline was found."
+    tables: []
   });
 
   slides.push({
     id: "risks-dependencies",
     kind: "risks-dependencies",
     title: "Risks & Dependencies",
-    subtitle: "Key risks to programme performance, external dependencies, and assigned action owners for the next review cycle.",
+    subtitle: "",
     bullets: [],
     kpis: [],
     tables: [
       {
         title: "Risks & Dependencies",
-        columns: ["Risk", "Impact", "Mitigation"],
-        colW: [2.8, 1.25, 8.45],
+        columns: ["Risk / rationale"],
+        colW: [12.5],
         rows: buildRiskRows(input),
         dense: false
       }
@@ -2642,7 +3338,7 @@ function buildDeckSpec(input, theme) {
   slides.push({
     id: "thank-you",
     kind: "thank-you",
-    title: `${input.client} - Thank you.`,
+    title: `${capitalizeFirstLetter(input.client)} - Thank you.`,
     subtitle: "",
     bullets: [],
     kpis: [],
@@ -2940,6 +3636,38 @@ function addCallout(slide, deck, text, y, darkText = true) {
   });
 }
 
+function kpiDeltaColor(deck, card) {
+  const delta = cleanDeltaText(card && card.delta);
+  if (card && card.trend === "up") return toColor(deck.theme.colors.success);
+  if (card && card.trend === "down") return toColor(deck.theme.colors.accentAlt);
+  if (card && card.trend === "flat") return toColor(deck.theme.colors.warning);
+  if (delta.startsWith("+")) return toColor(deck.theme.colors.success);
+  if (delta.startsWith("-")) return toColor(deck.theme.colors.accentAlt);
+  if (/^(0(?:\.0+)?%?|n\/a|na|-)?$/i.test(delta)) return toColor(deck.theme.colors.warning);
+  return toColor(deck.theme.colors.ink);
+}
+
+function kpiSummaryParts(card) {
+  const summary = cleanInlineText(card.summary || card.value || "-");
+  const delta = cleanDeltaText(card.delta || "");
+  const finalDeltaMatch = summary.match(/([+-]\s?\d+(?:[.,]\d+)?%|0(?:[.,]0+)?%)\s*$/);
+  if (!delta && !finalDeltaMatch) return { summary };
+
+  const matchedDelta = finalDeltaMatch ? finalDeltaMatch[1].replace(/\s+/g, "") : delta;
+  let idx = delta ? summary.lastIndexOf(delta) : -1;
+  let deltaText = delta;
+  if (idx < 0 && finalDeltaMatch) {
+    deltaText = finalDeltaMatch[1];
+    idx = finalDeltaMatch.index;
+  }
+  if (idx < 0) return { summary };
+
+  const before = summary.slice(0, idx).trimEnd();
+  const after = summary.slice(idx + deltaText.length);
+  if (after.trim()) return { summary };
+  return { before, delta: matchedDelta };
+}
+
 function addKpis(slide, deck, cards, origin, mode = "light") {
   const visible = (cards || []).slice(0, 6);
   if (!visible.length) return;
@@ -2961,12 +3689,6 @@ function addKpis(slide, deck, cards, origin, mode = "light") {
       x = origin.x + col * (cardW + gapX);
       y = origin.y + row * (cardH + gapY);
     }
-    const trendColor = card.trend === "up"
-      ? deck.theme.colors.success
-      : card.trend === "down"
-        ? deck.theme.colors.accentAlt
-        : deck.theme.colors.muted;
-
     slide.addShape("rect", {
       x,
       y,
@@ -3024,26 +3746,37 @@ function addKpis(slide, deck, cards, origin, mode = "light") {
       color: toColor(deck.theme.colors.ink),
       margin: 0
     });
-    const summary = cleanInlineText(card.summary || card.value || "-");
-    const delta = cleanInlineText(card.delta || "");
-    const hasDelta = delta && summary.includes(delta);
-    const baseText = hasDelta ? summary.slice(0, summary.lastIndexOf(delta)).trimEnd() : summary;
-    const runs = hasDelta
-      ? [
-          { text: baseText ? `${baseText} ` : "", options: { color: toColor(deck.theme.colors.ink) } },
-          { text: delta, options: { color: toColor(trendColor) } }
-        ]
-      : [{ text: summary, options: { color: toColor(deck.theme.colors.ink) } }];
-    slide.addText(runs, {
-      x: x + 0.22,
+    const summaryParts = kpiSummaryParts(card);
+    const summaryOptions = {
       y: y + 0.86,
-      w: cardW - 0.35,
       h: 0.52,
       fontFace: deck.theme.fonts.body,
       fontSize: 10.2,
       margin: 0,
       breakLine: true
-    });
+    };
+    if (summaryParts.delta) {
+      slide.addText(summaryParts.before, {
+        ...summaryOptions,
+        x: x + 0.22,
+        w: cardW - 1.32,
+        color: toColor(deck.theme.colors.ink)
+      });
+      slide.addText(summaryParts.delta, {
+        ...summaryOptions,
+        x: x + cardW - 1.06,
+        w: 0.88,
+        color: kpiDeltaColor(deck, card),
+        bold: true
+      });
+    } else {
+      slide.addText(summaryParts.summary, {
+        ...summaryOptions,
+        x: x + 0.22,
+        w: cardW - 0.35,
+        color: toColor(deck.theme.colors.ink)
+      });
+    }
   });
 }
 
@@ -3138,28 +3871,17 @@ function renderProgramActivationSnapshotSlide(slide, deck, spec) {
   const ruleInsetY = 0.40;
   const ruleGapY = 0.34;
 
-  if (HAS_TD_FIFTH_ELEMENT_WHITE) {
-    const divider = { w: 4.72, h: 3.34 };
-    slide.addImage({
-      path: TD_FIFTH_ELEMENT_WHITE_PATH,
-      x: centerX - divider.w / 2,
-      y: centerY - divider.h / 2,
-      w: divider.w,
-      h: divider.h
+  [
+    { x: centerX, y: matrix.y + ruleInsetY, w: 0, h: cellH - ruleInsetY - ruleGapY },
+    { x: centerX, y: centerY + ruleGapY, w: 0, h: cellH - ruleInsetY - ruleGapY },
+    { x: matrix.x + ruleInsetX, y: centerY, w: cellW - ruleInsetX - ruleGapX, h: 0 },
+    { x: centerX + ruleGapX, y: centerY, w: cellW - ruleInsetX - ruleGapX, h: 0 }
+  ].forEach((line) => {
+    slide.addShape("line", {
+      ...line,
+      line: { color: toColor("#FFFFFF"), pt: 1.0, transparency: 0 }
     });
-  } else {
-    [
-      { x: centerX, y: matrix.y + ruleInsetY, w: 0, h: cellH - ruleInsetY - ruleGapY },
-      { x: centerX, y: centerY + ruleGapY, w: 0, h: cellH - ruleInsetY - ruleGapY },
-      { x: matrix.x + ruleInsetX, y: centerY, w: cellW - ruleInsetX - ruleGapX, h: 0 },
-      { x: centerX + ruleGapX, y: centerY, w: cellW - ruleInsetX - ruleGapX, h: 0 }
-    ].forEach((line) => {
-      slide.addShape("line", {
-        ...line,
-        line: { color: toColor("#FFFFFF"), pt: 1.0, transparency: 0 }
-      });
-    });
-  }
+  });
 
   items.slice(0, 4).forEach((item, index) => {
     addActivationSnapshotCell(slide, deck, item, {
@@ -3183,30 +3905,60 @@ function niceAxisMax(value) {
   return nice * magnitude;
 }
 
+function weeklyPubCommSeriesColor(label, index, deck) {
+  const normalized = cleanInlineText(label || "").toLowerCase().replace(/\s+/g, " ");
+  const accent = deck.theme.colors.accent;
+  const red = deck.theme.colors.accentAlt || "#EB5757";
+  const colorsByLabel = [
+    { pattern: /^(your site|primary publisher|primary site)$/, color: accent },
+    { pattern: /^(publisher|competitor)\s*1$|^comp\.?\s*a$/, color: "#F28E2B" },
+    { pattern: /^(publisher|competitor)\s*2$|^comp\.?\s*b$/, color: "#9AA3AD" },
+    { pattern: /^(publisher|competitor)\s*3$|^comp\.?\s*c$/, color: "#F2C94C" },
+    { pattern: /^(publisher|competitor)\s*4$|^comp\.?\s*d$/, color: red }
+  ];
+  const match = colorsByLabel.find((item) => item.pattern.test(normalized));
+  if (match) return match.color;
+  return [accent, "#F28E2B", "#9AA3AD", "#F2C94C", red][index % 5];
+}
+
 function addWeeklyComboChart(slide, deck, chart, box) {
   if (!chart || !Array.isArray(chart.categories) || !chart.categories.length || !Array.isArray(chart.series)) return;
 
   const locale = deck.metadata.locale || "en-GB";
-  const palette = [
-    deck.theme.colors.accent,
-    "#F28E2B",
-    "#9AA3AD",
-    "#F2C94C",
-    "#2F6FF2"
-  ];
-  const values = chart.series.flatMap((series) => series.values || []);
-  const axisMax = niceAxisMax(Math.max(...values, 0));
-  const plot = {
-    x: box.x + 0.62,
-    y: box.y + 0.35,
-    w: box.w - 0.82,
-    h: box.h - 0.92
-  };
-  const categoryCount = chart.categories.length;
-  const step = plot.w / Math.max(1, categoryCount);
-  const zeroY = plot.y + plot.h;
-  const toY = (value) => zeroY - ((Number(value) || 0) / axisMax) * plot.h;
-  const centerX = (index) => plot.x + step * index + step / 2;
+  const values = chart.series
+    .flatMap((series) => series.values || [])
+    .filter((value) => value !== null && value !== undefined && Number.isFinite(Number(value)));
+  const axisMax = niceAxisMax(values.length ? Math.max(...values, 0) : 0);
+  const chartData = chart.series
+    .slice(0, 5)
+    .filter((series) => Array.isArray(series.values) && series.values.some((value) => value !== null && value !== undefined && Number.isFinite(Number(value))))
+    .map((series) => ({
+      name: cleanInlineText(series.label || "Series"),
+      labels: chart.categories.map((category) => cleanInlineText(category)),
+      values: (series.values || []).map((value) => (
+        value === null || value === undefined || !Number.isFinite(Number(value)) ? null : Number(value)
+      ))
+    }));
+  if (!chartData.length) return;
+  const palette = chartData.map((series, index) => weeklyPubCommSeriesColor(series.name, index, deck));
+
+  slide.addShape("rect", {
+    x: box.x,
+    y: box.y,
+    w: box.w,
+    h: box.h,
+    line: { color: toColor(deck.theme.colors.paper), pt: 0 },
+    fill: { color: toColor(deck.theme.colors.paper) }
+  });
+
+  slide.addShape("rect", {
+    x: box.x + 0.54,
+    y: box.y + 0.28,
+    w: box.w - 0.66,
+    h: box.h - 0.78,
+    line: { color: toColor(deck.theme.colors.paper), pt: 0 },
+    fill: { color: toColor(deck.theme.colors.paper) }
+  });
 
   slide.addText(cleanInlineText(chart.title || "Publ comm by week"), {
     x: box.x,
@@ -3220,110 +3972,49 @@ function addWeeklyComboChart(slide, deck, chart, box) {
     margin: 0
   });
 
-  for (let i = 0; i <= 5; i += 1) {
-    const y = plot.y + (plot.h / 5) * i;
-    const value = axisMax - (axisMax / 5) * i;
-    slide.addShape("line", {
-      x: plot.x,
-      y,
-      w: plot.w,
-      h: 0,
-      line: { color: toColor("#D9DEE8"), pt: 0.45, transparency: i === 5 ? 10 : 25 }
-    });
-    slide.addText(formatAxisNumber(value, locale), {
-      x: box.x,
-      y: y - 0.07,
-      w: 0.48,
-      h: 0.14,
-      align: "right",
-      fontFace: deck.theme.fonts.body,
-      fontSize: 6.2,
-      color: toColor(deck.theme.colors.muted),
-      margin: 0
-    });
-  }
-
-  const primary = chart.series.find((series) => series.renderAs === "bar") || chart.series[0];
-  const barW = Math.min(0.2, step * 0.32);
-  (primary.values || []).forEach((value, index) => {
-    const top = toY(value);
-    slide.addShape("rect", {
-      x: centerX(index) - barW / 2,
-      y: top,
-      w: barW,
-      h: Math.max(0.02, zeroY - top),
-      line: { color: toColor(palette[0]), pt: 0 },
-      fill: { color: toColor(palette[0]), transparency: 8 }
-    });
-  });
-
-  chart.series
-    .filter((series) => series !== primary)
-    .forEach((series, seriesIndex) => {
-      const color = palette[(seriesIndex + 1) % palette.length];
-      const points = (series.values || []).map((value, index) => [centerX(index), toY(value)]);
-      drawPolyline(slide, points, color, 0, 1.2);
-      points.forEach(([x, y]) => {
-        slide.addShape("ellipse", {
-          x: x - 0.025,
-          y: y - 0.025,
-          w: 0.05,
-          h: 0.05,
-          line: { color: toColor(color), pt: 0 },
-          fill: { color: toColor(color) }
-        });
-      });
-    });
-
-  chart.categories.forEach((category, index) => {
-    slide.addText(cleanInlineText(category), {
-      x: centerX(index) - step * 0.48,
-      y: zeroY + 0.08,
-      w: step * 0.96,
-      h: 0.15,
-      align: "center",
-      fontFace: deck.theme.fonts.body,
-      fontSize: 5.8,
-      color: toColor(deck.theme.colors.muted),
-      margin: 0
-    });
-  });
-
-  const legend = chart.series.slice(0, 5);
-  const legendW = 1.12;
-  const legendStartX = plot.x + Math.max(0, (plot.w - legend.length * legendW) / 2);
-  legend.forEach((series, index) => {
-    const color = palette[index % palette.length];
-    const x = legendStartX + index * legendW;
-    const y = box.y + box.h - 0.22;
-    if (series.renderAs === "bar") {
-      slide.addShape("rect", {
-        x,
-        y: y + 0.04,
-        w: 0.15,
-        h: 0.05,
-        line: { color: toColor(color), pt: 0 },
-        fill: { color: toColor(color) }
-      });
-    } else {
-      slide.addShape("line", {
-        x,
-        y: y + 0.07,
-        w: 0.16,
-        h: 0,
-        line: { color: toColor(color), pt: 1.1 }
-      });
-    }
-    slide.addText(cleanInlineText(series.label), {
-      x: x + 0.19,
-      y,
-      w: legendW - 0.2,
-      h: 0.16,
-      fontFace: deck.theme.fonts.body,
-      fontSize: 6.4,
-      color: toColor(deck.theme.colors.muted),
-      margin: 0
-    });
+  slide.addChart("line", chartData, {
+    x: box.x + 0.36,
+    y: box.y + 0.28,
+    w: box.w - 0.58,
+    h: box.h - 0.36,
+    chartColors: palette.map((color) => toColor(color)),
+    chartArea: {
+      fill: { color: toColor(deck.theme.colors.paper), transparency: 0 },
+      border: { color: toColor(deck.theme.colors.paper), pt: 0 }
+    },
+    plotArea: {
+      fill: { color: toColor(deck.theme.colors.paper), transparency: 0 },
+      border: { color: toColor(deck.theme.colors.paper), pt: 0 }
+    },
+    displayBlanksAs: "span",
+    lineCap: "round",
+    lineDataSymbol: "none",
+    lineSize: 2.0,
+    showLegend: true,
+    legendPos: "b",
+    legendColor: toColor(deck.theme.colors.muted),
+    legendFontFace: deck.theme.fonts.body,
+    legendFontSize: 7,
+    showTitle: false,
+    showValue: false,
+    showLabel: false,
+    catAxisLabelColor: toColor(deck.theme.colors.muted),
+    catAxisLabelFontFace: deck.theme.fonts.body,
+    catAxisLabelFontSize: 6,
+    catAxisLineColor: toColor("#D9DEE8"),
+    catAxisLineSize: 0.45,
+    catAxisMajorTickMark: "none",
+    valAxisLabelColor: toColor(deck.theme.colors.muted),
+    valAxisLabelFontFace: deck.theme.fonts.body,
+    valAxisLabelFontSize: 6.2,
+    valAxisLabelFormatCode: "#,##0",
+    valAxisMinVal: 0,
+    valAxisMaxVal: axisMax,
+    valAxisMajorUnit: axisMax / 5,
+    valAxisLineShow: false,
+    valAxisMajorTickMark: "none",
+    valGridLine: { color: toColor("#D9DEE8"), size: 0.45, style: "solid", cap: "flat" },
+    lang: locale
   });
 }
 
@@ -3421,17 +4112,157 @@ function addMoversBarChart(slide, deck, chart, box) {
   });
 }
 
+function addCompetitorShareBarChart(slide, deck, chart, box) {
+  const categories = chart && Array.isArray(chart.categories) ? chart.categories.slice(0, 5) : [];
+  const series = chart && Array.isArray(chart.series) ? chart.series.slice(0, 2) : [];
+  const activeSeries = series.filter((item) => Array.isArray(item.values) && item.values.some((value) => Number(value) > 0));
+  const labels = categories.length ? categories : ["Your Site", "Comp. A", "Comp. B", "Comp. C", "Comp. D"];
+  const plot = {
+    x: box.x + 0.54,
+    y: box.y + 0.58,
+    w: box.w - 0.78,
+    h: box.h - 1.20
+  };
+  const palette = ["#7CC8DE", deck.theme.colors.accent];
+  const groupW = plot.w / Math.max(1, labels.length);
+  const maxValue = Math.max(100, ...activeSeries.flatMap((item) => item.values.map((value) => Number(value) || 0)));
+  const axisMax = Math.min(100, Math.ceil(maxValue / 10) * 10);
+  const zeroY = plot.y + plot.h;
+
+  slide.addText(cleanInlineText(chart?.title || "Share of publisher commission within competitor group"), {
+    x: box.x,
+    y: box.y,
+    w: box.w,
+    h: 0.28,
+    align: "center",
+    fontFace: deck.theme.fonts.body,
+    fontSize: 12,
+    color: toColor(deck.theme.colors.ink),
+    margin: 0
+  });
+
+  [0, 25, 50, 75, 100].forEach((tick) => {
+    const y = zeroY - (tick / axisMax) * plot.h;
+    slide.addShape("line", {
+      x: plot.x,
+      y,
+      w: plot.w,
+      h: 0,
+      line: { color: toColor(tick === 0 ? "#AEB6C4" : "#DDE3ED"), pt: tick === 0 ? 0.75 : 0.45, transparency: tick === 0 ? 0 : 18 }
+    });
+  });
+
+  if (!activeSeries.length) {
+    slide.addText("Competitor share chart requires publisher commission values for the primary site and comparison group.", {
+      x: box.x + 0.6,
+      y: box.y + 2.5,
+      w: box.w - 1.2,
+      h: 0.42,
+      align: "center",
+      fontFace: deck.theme.fonts.body,
+      fontSize: 12,
+      color: toColor(deck.theme.colors.muted),
+      margin: 0
+    });
+    return;
+  }
+
+  labels.forEach((label, categoryIndex) => {
+    const seriesCount = activeSeries.length;
+    const barW = Math.min(0.48, groupW / (seriesCount + 1.35));
+    const totalBarsW = (barW * seriesCount) + (0.10 * Math.max(0, seriesCount - 1));
+    const startX = plot.x + categoryIndex * groupW + (groupW - totalBarsW) / 2;
+    activeSeries.forEach((item, seriesIndex) => {
+      const value = Math.max(0, Number(item.values[categoryIndex]) || 0);
+      const barH = (value / axisMax) * plot.h;
+      const x = startX + seriesIndex * (barW + 0.10);
+      const y = zeroY - barH;
+      slide.addShape("rect", {
+        x,
+        y,
+        w: barW,
+        h: Math.max(0.02, barH),
+        line: { color: toColor(palette[seriesIndex]), pt: 0 },
+        fill: { color: toColor(palette[seriesIndex]), transparency: seriesIndex === 0 ? 8 : 0 }
+      });
+      slide.addText(`${Math.round(value)}%`, {
+        x: x - 0.12,
+        y: Math.max(plot.y - 0.02, y - 0.28),
+        w: barW + 0.24,
+        h: 0.18,
+        align: "center",
+        fontFace: deck.theme.fonts.body,
+        fontSize: 8.5,
+        color: toColor(deck.theme.colors.ink),
+        margin: 0
+      });
+    });
+    slide.addText(cleanInlineText(label), {
+      x: plot.x + categoryIndex * groupW + 0.02,
+      y: zeroY + 0.16,
+      w: groupW - 0.04,
+      h: 0.20,
+      align: "center",
+      fontFace: deck.theme.fonts.body,
+      fontSize: 8.6,
+      color: toColor(deck.theme.colors.muted),
+      margin: 0,
+      fit: "shrink"
+    });
+  });
+
+  const legendW = 1.78;
+  const legendStart = plot.x + Math.max(0, (plot.w - activeSeries.length * legendW) / 2);
+  activeSeries.forEach((item, index) => {
+    const x = legendStart + index * legendW;
+    const y = box.y + box.h - 0.26;
+    slide.addShape("rect", {
+      x,
+      y: y + 0.045,
+      w: 0.15,
+      h: 0.07,
+      line: { color: toColor(palette[index]), pt: 0 },
+      fill: { color: toColor(palette[index]) }
+    });
+    slide.addText(cleanInlineText(item.label), {
+      x: x + 0.20,
+      y,
+      w: legendW - 0.22,
+      h: 0.18,
+      fontFace: deck.theme.fonts.body,
+      fontSize: 7.6,
+      color: toColor(deck.theme.colors.muted),
+      margin: 0
+    });
+  });
+}
+
 function isDeltaColumn(header) {
   const lower = cleanInlineText(header).toLowerCase();
-  return lower.includes("change") || lower.includes("variance") || lower.includes("yoy") || lower.includes("trend");
+  return lower.includes("change")
+    || lower.includes("variance")
+    || lower.includes("yoy")
+    || lower.includes("trend")
+    || lower.includes("difference")
+    || lower.includes("delta")
+    || lower.includes("movement");
 }
 
 function cellTextColor(table, column, value, deck) {
-  if (!isDeltaColumn(column)) return toColor(deck.theme.colors.ink);
   const text = cleanInlineText(value);
-  if (text.startsWith("+")) return toColor(deck.theme.colors.success);
-  if (text.startsWith("-")) return toColor(deck.theme.colors.accentAlt);
-  if (/^(0(?:\.0+)?%?|n\/a|na|-)?$/i.test(text)) return toColor(deck.theme.colors.warning);
+  const movementColumn = isDeltaColumn(column);
+  const compact = text
+    .replace(MOJIBAKE_DIRECTION_MARK_REGEX, "")
+    .replace(DIRECTION_MARK_REGEX, "")
+    .replace(/\s+/g, " ")
+    .trim();
+  const hasSignedMovement = /^[+]/.test(compact) || /^-/.test(compact) || /\b(?:GBP|EUR|USD|AUD|PLN)\s*[+-]/i.test(compact);
+  const hasSignedPercent = /^[+-]\d+(?:[.,]\d+)?%$/.test(compact);
+
+  if (!movementColumn && !hasSignedMovement && !hasSignedPercent) return toColor(deck.theme.colors.ink);
+  if (/^\+/.test(compact) || /\b(?:GBP|EUR|USD|AUD|PLN)\s*\+/i.test(compact)) return toColor(deck.theme.colors.success);
+  if (/^-/.test(compact) || /\b(?:GBP|EUR|USD|AUD|PLN)\s*-/i.test(compact)) return toColor(deck.theme.colors.accentAlt);
+  if (/^(0(?:[.,]0+)?%?|n\/a|na|-)?$/i.test(compact)) return toColor(deck.theme.colors.warning);
   return toColor(deck.theme.colors.ink);
 }
 
@@ -3440,7 +4271,7 @@ function addTable(slide, deck, table, box, mode = "light") {
   const innerY = box.y + 0.10;
   const innerW = box.w - 0.24;
   const innerH = box.h - 0.20;
-  const columnAlignments = table.columns.map((column, index) => inferTableColumnAlign(table, index, column));
+  const columnAlignments = table.columns.map(() => "center");
 
   const header = table.columns.map((column, columnIndex) => ({
     text: column,
@@ -3537,6 +4368,583 @@ function addTable(slide, deck, table, box, mode = "light") {
   return { containerH, tableH: effectiveTableH };
 }
 
+function splitRiskTileText(value) {
+  const text = cleanInlineText(value || "");
+  const actionMatch = text.match(/\b(?:Publisher action|Action):\s*(.+)$/i);
+  const action = actionMatch ? cleanInlineText(actionMatch[1]) : "";
+  const analysisText = actionMatch ? cleanInlineText(text.slice(0, actionMatch.index)) : text;
+  const compactAnalysis = compactRiskRationale(analysisText, 210);
+  const colonIndex = compactAnalysis.indexOf(":");
+  const periodIndex = compactAnalysis.indexOf(".");
+  const validColon = colonIndex > 4 && colonIndex < 80 ? colonIndex : -1;
+  const validPeriod = periodIndex > 4 && periodIndex < 80 ? periodIndex : -1;
+  const splitIndex = validColon >= 0 && validPeriod >= 0
+    ? Math.min(validColon, validPeriod)
+    : Math.max(validColon, validPeriod);
+  if (splitIndex < 0) {
+    return { heading: "Risk", detail: compactAnalysis, action };
+  }
+  return {
+    heading: cleanInlineText(compactAnalysis.slice(0, splitIndex)),
+    detail: cleanInlineText(compactAnalysis.slice(splitIndex + 1)),
+    action
+  };
+}
+
+function renderRisksDependenciesTiles(slide, deck, spec) {
+  const rows = spec.tables?.[0]?.rows || [];
+  const risks = rows
+    .map((row) => cleanInlineText(Array.isArray(row) ? row[0] : row))
+    .filter(Boolean)
+    .slice(0, 3);
+  const items = risks.length ? risks : [
+    "Program concentration risk: diversify program mix and reduce reliance on the top contributors."
+  ];
+  const tiles = [
+    { x: 0.78, y: 2.16, w: 3.76, h: 3.82 },
+    { x: 4.78, y: 2.16, w: 3.76, h: 3.82 },
+    { x: 8.78, y: 2.16, w: 3.76, h: 3.82 }
+  ];
+
+  tiles.forEach((tile, index) => {
+    const item = items[index] || "";
+    const parsed = splitRiskTileText(item);
+    slide.addShape("roundRect", {
+      x: tile.x,
+      y: tile.y,
+      w: tile.w,
+      h: tile.h,
+      radius: 0.08,
+      line: { color: toColor("#D7E4FF"), pt: 0 },
+      fill: { color: toColor("#D7E4FF") }
+    });
+    if (!item) return;
+    slide.addText(parsed.heading, {
+      x: tile.x + 0.32,
+      y: tile.y + 0.34,
+      w: tile.w - 0.64,
+      h: 0.56,
+      align: "center",
+      fontFace: deck.theme.fonts.heading,
+      fontSize: 11.4,
+      bold: true,
+      color: toColor(deck.theme.colors.ink),
+      margin: 0,
+      breakLine: true,
+      fit: "shrink"
+    });
+    slide.addText("Analysis", {
+      x: tile.x + 0.32,
+      y: tile.y + 1.12,
+      w: tile.w - 0.64,
+      h: 0.22,
+      fontFace: deck.theme.fonts.heading,
+      fontSize: 8.3,
+      bold: true,
+      color: toColor(deck.theme.colors.accent),
+      margin: 0
+    });
+    slide.addText(parsed.detail || item, {
+      x: tile.x + 0.32,
+      y: tile.y + 1.40,
+      w: tile.w - 0.68,
+      h: 0.98,
+      fontFace: deck.theme.fonts.body,
+      fontSize: 8.1,
+      color: toColor(deck.theme.colors.ink),
+      margin: 0,
+      breakLine: true,
+      fit: "shrink"
+    });
+    slide.addText("Action", {
+      x: tile.x + 0.32,
+      y: tile.y + 2.58,
+      w: tile.w - 0.64,
+      h: 0.22,
+      fontFace: deck.theme.fonts.heading,
+      fontSize: 8.3,
+      bold: true,
+      color: toColor(deck.theme.colors.accent),
+      margin: 0
+    });
+    slide.addText(parsed.action || "Run one controlled publisher test with a target metric and success threshold for the next review.", {
+      x: tile.x + 0.32,
+      y: tile.y + 2.86,
+      w: tile.w - 0.68,
+      h: 0.72,
+      fontFace: deck.theme.fonts.body,
+      fontSize: 7.7,
+      color: toColor(deck.theme.colors.ink),
+      margin: 0,
+      breakLine: true,
+      fit: "shrink"
+    });
+  });
+}
+
+function truncateDisplayText(value, maxChars) {
+  const text = cleanInlineText(value || "");
+  if (text.length <= maxChars) return text;
+  const clipped = text.slice(0, Math.max(0, maxChars - 3));
+  const lastSpace = clipped.lastIndexOf(" ");
+  return `${(lastSpace > 12 ? clipped.slice(0, lastSpace) : clipped).trimEnd()}...`;
+}
+
+function programConnectionNameFontSize(name, baseFontSize, nameW, rowH) {
+  const text = cleanInlineText(name || "");
+  if (!text) return baseFontSize;
+
+  const oneLineCapacity = Math.max(10, Math.floor(nameW * 10.5));
+  const twoLineCapacity = Math.max(oneLineCapacity, Math.floor(oneLineCapacity * 1.8));
+  if (text.length <= oneLineCapacity) return baseFontSize;
+  if (text.length <= twoLineCapacity && rowH >= 0.34) return Math.max(4.7, baseFontSize - 0.4);
+  if (rowH >= 0.34) return Math.max(4.3, baseFontSize - 0.9);
+  return Math.max(4.1, baseFontSize - 1.0);
+}
+
+function renderProgramConnectionStatusSlide(slide, deck, spec) {
+  addLightChrome(slide, deck);
+  addTitle(slide, deck, spec, deck.theme.colors.ink, deck.theme.colors.accent, false);
+
+  const data = spec.programConnectionStatus || {};
+  const rows = Array.isArray(data.rows) ? data.rows : [];
+  const totalRows = Number(data.totalRows || rows.length) || rows.length;
+  const pageIndex = Number(data.pageIndex || 0);
+  const pageCount = Math.max(1, Number(data.pageCount || 1) || 1);
+  const key = Array.isArray(data.key) ? data.key : CONNECTION_STATUS_META;
+  const counts = data.counts || {};
+  const cutoffText = cleanInlineText(data.cutoffDate || "");
+  const cutoffDate = /^\d{4}-\d{2}-\d{2}$/.test(cutoffText)
+    ? new Date(`${cutoffText}T00:00:00Z`)
+    : null;
+  const cutoffLabel = cutoffDate && !Number.isNaN(cutoffDate.getTime())
+    ? formatLongDate(cutoffDate, deck.metadata.locale || "en-GB")
+    : cutoffText;
+  const countText = Object.entries(counts)
+    .sort((a, b) => b[1] - a[1])
+    .map(([label, count]) => `${label}: ${count}`)
+    .join(" | ");
+  const pageText = pageCount > 1 ? ` | Page ${pageIndex + 1}/${pageCount}` : "";
+  const cutoffSummary = cutoffLabel ? ` | Created from ${cutoffLabel}` : "";
+
+  slide.addText(`${totalRows} programs reviewed${pageText}${countText ? ` | ${countText}` : ""}${cutoffSummary}`, {
+    x: 0.72,
+    y: 1.28,
+    w: 10.9,
+    h: 0.28,
+    fontFace: deck.theme.fonts.body,
+    fontSize: 8.8,
+    color: toColor(deck.theme.colors.muted),
+    margin: 0,
+    fit: "shrink"
+  });
+
+  const keyX = 12.0;
+  const keyY = 1.72;
+  const keyW = 1.05;
+  slide.addShape("roundRect", {
+    x: keyX,
+    y: keyY,
+    w: keyW,
+    h: 2.96,
+    radius: 0.04,
+    rectRadius: 0.04,
+    line: { color: toColor("#D6DAE3"), pt: 0.45 },
+    fill: { color: toColor("#FFFFFF"), transparency: 5 }
+  });
+  slide.addText("Key", {
+    x: keyX + 0.10,
+    y: keyY + 0.12,
+    w: keyW - 0.20,
+    h: 0.18,
+    fontFace: deck.theme.fonts.heading,
+    fontSize: 8.2,
+    bold: true,
+    color: toColor(deck.theme.colors.ink),
+    margin: 0
+  });
+  key.forEach((item, index) => {
+    const y = keyY + 0.43 + index * 0.30;
+    slide.addShape("ellipse", {
+      x: keyX + 0.10,
+      y: y + 0.014,
+      w: 0.075,
+      h: 0.075,
+      line: { color: toColor(item.color), pt: 0 },
+      fill: { color: toColor(item.color) }
+    });
+    slide.addText(`${item.id} ${item.shortLabel || item.label}`, {
+      x: keyX + 0.22,
+      y: y - 0.010,
+      w: keyW - 0.28,
+      h: 0.14,
+      fontFace: deck.theme.fonts.body,
+      fontSize: 5.8,
+      color: toColor(deck.theme.colors.ink),
+      margin: 0,
+      fit: "shrink"
+    });
+  });
+
+  const grid = { x: 0.42, y: 1.78, w: 11.40, h: 5.34 };
+  const columnCount = programConnectionStatusColumnCount(totalRows);
+  const gap = columnCount > 5 ? 0.055 : 0.075;
+  const columnW = (grid.w - ((columnCount - 1) * gap)) / columnCount;
+  const rowsPerColumn = Math.max(12, Math.ceil(rows.length / columnCount));
+  const rowH = grid.h / Math.max(1, rowsPerColumn);
+  const compact = rowsPerColumn > 18 || columnCount > 5;
+  const fontSize = compact ? 5.0 : (rowH > 0.36 ? 6.4 : 5.8);
+  const headerFontSize = compact ? 5.0 : 5.7;
+  const textH = Math.max(0.16, rowH - 0.045);
+
+  for (let columnIndex = 0; columnIndex < columnCount; columnIndex += 1) {
+    const x = grid.x + columnIndex * (columnW + gap);
+    slide.addShape("rect", {
+      x,
+      y: grid.y - 0.24,
+      w: columnW,
+      h: 0.20,
+      line: { color: toColor("#D6DAE3"), pt: 0.25 },
+      fill: { color: toColor("#E5E8EF") }
+    });
+    slide.addText("ID / Program / Status", {
+      x: x + 0.06,
+      y: grid.y - 0.20,
+      w: columnW - 0.12,
+      h: 0.12,
+      fontFace: deck.theme.fonts.heading,
+      fontSize: headerFontSize,
+      bold: true,
+      color: toColor(deck.theme.colors.ink),
+      margin: 0,
+      fit: "shrink"
+    });
+
+    const start = columnIndex * rowsPerColumn;
+    const columnRows = rows.slice(start, start + rowsPerColumn);
+    columnRows.forEach((row, rowIndex) => {
+      const y = grid.y + rowIndex * rowH;
+      const fill = rowIndex % 2 === 0 ? "#F7F8FA" : "#ECEFF4";
+      const contentY = y + ((rowH - textH) / 2);
+      slide.addShape("rect", {
+        x,
+        y,
+        w: columnW,
+        h: Math.max(0.10, rowH - 0.014),
+        line: { color: toColor("#E3E6EC"), pt: 0.2 },
+        fill: { color: toColor(fill) }
+      });
+      slide.addShape("ellipse", {
+        x: x + 0.052,
+        y: y + Math.max(0.040, (rowH - 0.082) / 2),
+        w: 0.072,
+        h: 0.072,
+        line: { color: toColor(row.color || "#8A94A6"), pt: 0 },
+        fill: { color: toColor(row.color || "#8A94A6") }
+      });
+      slide.addText(truncateDisplayText(row.programId || "-", 7), {
+        x: x + 0.16,
+        y: contentY,
+        w: compact ? 0.36 : 0.44,
+        h: textH,
+        fontFace: deck.theme.fonts.mono,
+        fontSize,
+        bold: true,
+        color: toColor(deck.theme.colors.ink),
+        margin: 0,
+        fit: "shrink"
+      });
+      const nameX = x + (compact ? 0.56 : 0.66);
+      const statusW = compact ? 0.42 : 0.50;
+      const nameW = columnW - (nameX - x) - statusW - 0.09;
+      slide.addText(cleanInlineText(row.programName || "-"), {
+        x: nameX,
+        y: contentY,
+        w: nameW,
+        h: textH,
+        fontFace: deck.theme.fonts.body,
+        fontSize: programConnectionNameFontSize(row.programName, fontSize, nameW, rowH),
+        color: toColor(deck.theme.colors.ink),
+        margin: 0,
+        fit: "shrink"
+      });
+      slide.addText(row.shortStatus || row.status || "-", {
+        x: x + columnW - statusW - 0.05,
+        y: contentY,
+        w: statusW,
+        h: textH,
+        align: "right",
+        fontFace: deck.theme.fonts.body,
+        fontSize: Math.max(5.1, fontSize - 0.2),
+        color: toColor(row.color || deck.theme.colors.muted),
+        margin: 0,
+        fit: "shrink"
+      });
+    });
+  }
+}
+
+function renderGapAnalysisImpactSlide(slide, deck, spec) {
+  addLightChrome(slide, deck);
+  const impact = spec.gapImpact || {};
+  const kpis = Array.isArray(spec.kpis) ? spec.kpis : [];
+  const total = kpis[0] || { value: "-", label: "Competitor pub comm opportunity" };
+  const programs = kpis[1] || { value: "-", label: "Gap programs" };
+  const activation = kpis[2] || { value: "-", label: "Activation opportunities" };
+
+  addCyanFifthElementWireframe(slide, {
+    x: 0.30,
+    y: 1.02,
+    w: 4.65,
+    h: 4.65,
+    transparency: 22
+  });
+
+  slide.addText(cleanInlineText(spec.title || "Growth opportunity in the competitor gap"), {
+    x: 5.55,
+    y: 0.78,
+    w: 6.85,
+    h: 0.72,
+    fontFace: deck.theme.fonts.heading,
+    fontSize: 22,
+    color: toColor(deck.theme.colors.ink),
+    breakLine: true,
+    fit: "shrink",
+    margin: 0
+  });
+
+  [
+    { x: 5.60, metric: programs, detail: cleanInlineText(programs.summary || "Programs requiring action") },
+    { x: 9.25, metric: activation, detail: cleanInlineText(activation.summary || "Already accepted but inactive") }
+  ].forEach(({ x, metric, detail }) => {
+    slide.addText(cleanInlineText(metric.value || "-"), {
+      x,
+      y: 1.78,
+      w: 2.7,
+      h: 0.52,
+      fontFace: deck.theme.fonts.heading,
+      fontSize: 30,
+      bold: true,
+      color: toColor(deck.theme.colors.ink),
+      align: "center",
+      margin: 0
+    });
+    slide.addText(cleanInlineText(metric.label || "-"), {
+      x: x - 0.2,
+      y: 2.52,
+      w: 3.1,
+      h: 0.25,
+      fontFace: deck.theme.fonts.heading,
+      fontSize: 12.5,
+      bold: true,
+      color: toColor(deck.theme.colors.muted),
+      align: "center",
+      fit: "shrink",
+      margin: 0
+    });
+    slide.addText(detail, {
+      x: x - 0.25,
+      y: 2.88,
+      w: 3.2,
+      h: 0.28,
+      fontFace: deck.theme.fonts.body,
+      fontSize: 9.8,
+      color: toColor(deck.theme.colors.muted),
+      align: "center",
+      fit: "shrink",
+      margin: 0
+    });
+  });
+
+  slide.addText(cleanInlineText(total.value || "-"), {
+    x: 6.45,
+    y: 3.58,
+    w: 4.4,
+    h: 0.68,
+    fontFace: deck.theme.fonts.heading,
+    fontSize: 36,
+    bold: true,
+    color: toColor(deck.theme.colors.ink),
+    align: "center",
+    margin: 0
+  });
+  slide.addText(cleanInlineText(total.label || "Competitor pub comm opportunity"), {
+    x: 6.20,
+    y: 4.42,
+    w: 4.9,
+    h: 0.34,
+    fontFace: deck.theme.fonts.heading,
+    fontSize: 13.5,
+    bold: true,
+    color: toColor(deck.theme.colors.muted),
+    align: "center",
+    fit: "shrink",
+    margin: 0
+  });
+  slide.addText(cleanInlineText(total.summary || "Competitors are earning where the primary publisher is not."), {
+    x: 6.32,
+    y: 4.86,
+    w: 4.68,
+    h: 0.42,
+    fontFace: deck.theme.fonts.body,
+    fontSize: 10.4,
+    color: toColor(deck.theme.colors.muted),
+    align: "center",
+    fit: "shrink",
+    margin: 0
+  });
+
+  const narrative = `Prioritise accepted and click-led programs first, then build an application pipeline for no-connection gaps. The largest visible gap is ${cleanInlineText(impact.leadingProgram || "the leading program")} (${cleanInlineText(impact.leadingProgramValue || "-")}).`;
+  slide.addText(narrative, {
+    x: 5.55,
+    y: 5.58,
+    w: 6.75,
+    h: 0.7,
+    fontFace: deck.theme.fonts.body,
+    fontSize: 11.4,
+    color: toColor(deck.theme.colors.muted),
+    breakLine: true,
+    fit: "shrink",
+    margin: 0
+  });
+
+}
+
+function gapRegisterStatusColor(status, deck) {
+  const lower = cleanInlineText(status || "").toLowerCase();
+  if (/^pub comm$/.test(lower)) return deck.theme.colors.accent;
+  if (/accepted/.test(lower)) return deck.theme.colors.success;
+  if (/click/.test(lower)) return "#7CC8DE";
+  if (/no connection|not connected/.test(lower)) return "#8A94A6";
+  if (/denied/.test(lower)) return deck.theme.colors.accentAlt;
+  if (/ended/.test(lower)) return "#5B6372";
+  if (/hold|under consideration|consideration/.test(lower)) return deck.theme.colors.warning;
+  return "#8A94A6";
+}
+
+function renderGapAnalysisRegisterSlide(slide, deck, spec) {
+  addLightChrome(slide, deck);
+  addTitle(slide, deck, spec, deck.theme.colors.ink, deck.theme.colors.accent, false);
+
+  const register = spec.gapRegister || {};
+  const rows = Array.isArray(register.rows) ? register.rows : [];
+  const totalRows = Number(register.totalRows) || rows.length;
+  const pageText = register.pageCount > 1 ? ` | Page ${register.pageIndex + 1}/${register.pageCount}` : "";
+  slide.addText(`${totalRows} programs reviewed${pageText} | Pub Comm - Specified Sites is competitor-generated publisher commission where the primary publisher is not earning.`, {
+    x: 0.72,
+    y: 1.28,
+    w: 11.6,
+    h: 0.28,
+    fontFace: deck.theme.fonts.body,
+    fontSize: 8.8,
+    color: toColor(deck.theme.colors.muted),
+    margin: 0,
+    fit: "shrink"
+  });
+
+  const grid = { x: 0.42, y: 1.78, w: 12.48, h: 5.36 };
+  const columnCount = 3;
+  const gap = 0.10;
+  const columnW = (grid.w - (gap * (columnCount - 1))) / columnCount;
+  const rowsPerColumn = Math.max(1, register.rowsPerColumn || Math.ceil(rows.length / columnCount));
+  const headerH = 0.23;
+  const rowH = Math.min(0.225, (grid.h - headerH - 0.04) / rowsPerColumn);
+  const fontSize = rowH < 0.21 ? 4.8 : 5.25;
+
+  for (let columnIndex = 0; columnIndex < columnCount; columnIndex += 1) {
+    const x = grid.x + columnIndex * (columnW + gap);
+    slide.addShape("rect", {
+      x,
+      y: grid.y,
+      w: columnW,
+      h: headerH,
+      line: { color: toColor("#D6DAE3"), pt: 0.25 },
+      fill: { color: toColor("#E5E8EF") }
+    });
+    slide.addText("Program / ID / Status / Pub Comm", {
+      x: x + 0.06,
+      y: grid.y + 0.055,
+      w: columnW - 0.12,
+      h: 0.12,
+      fontFace: deck.theme.fonts.heading,
+      fontSize: 5.8,
+      bold: true,
+      color: toColor(deck.theme.colors.ink),
+      margin: 0,
+      fit: "shrink"
+    });
+
+    const columnRows = rows.slice(columnIndex * rowsPerColumn, (columnIndex + 1) * rowsPerColumn);
+    columnRows.forEach((row, rowIndex) => {
+      const y = grid.y + headerH + 0.035 + rowIndex * rowH;
+      const fill = rowIndex % 2 === 0 ? "#F7F8FA" : "#ECEFF4";
+      const statusColor = gapRegisterStatusColor(row.primaryStatus, deck);
+      slide.addShape("rect", {
+        x,
+        y,
+        w: columnW,
+        h: Math.max(0.10, rowH - 0.012),
+        line: { color: toColor("#E3E6EC"), pt: 0.16 },
+        fill: { color: toColor(fill) }
+      });
+      slide.addShape("ellipse", {
+        x: x + 0.045,
+        y: y + Math.max(0.035, (rowH - 0.065) / 2),
+        w: 0.060,
+        h: 0.060,
+        line: { color: toColor(statusColor), pt: 0 },
+        fill: { color: toColor(statusColor) }
+      });
+      slide.addText(cleanInlineText(row.programId || "-"), {
+        x: x + 0.13,
+        y: y + 0.035,
+        w: 0.42,
+        h: 0.12,
+        fontFace: deck.theme.fonts.mono,
+        fontSize,
+        bold: true,
+        color: toColor(deck.theme.colors.ink),
+        margin: 0,
+        fit: "shrink"
+      });
+      slide.addText(compactLabel(row.programName || "-", 28), {
+        x: x + 0.58,
+        y: y + 0.035,
+        w: columnW - 2.18,
+        h: 0.12,
+        fontFace: deck.theme.fonts.body,
+        fontSize,
+        color: toColor(deck.theme.colors.ink),
+        margin: 0,
+        fit: "shrink"
+      });
+      slide.addText(compactLabel(row.primaryStatus || "-", 13), {
+        x: x + columnW - 1.50,
+        y: y + 0.035,
+        w: 0.80,
+        h: 0.12,
+        fontFace: deck.theme.fonts.body,
+        fontSize: Math.max(4.6, fontSize - 0.1),
+        color: toColor(statusColor),
+        margin: 0,
+        fit: "shrink"
+      });
+      slide.addText(cleanInlineText(row.registerOpportunityDisplay || row.competitorPubCommDisplay || "-"), {
+        x: x + columnW - 0.68,
+        y: y + 0.035,
+        w: 0.62,
+        h: 0.12,
+        align: "right",
+        fontFace: deck.theme.fonts.body,
+        fontSize: Math.max(4.6, fontSize - 0.05),
+        color: toColor(deck.theme.colors.ink),
+        margin: 0,
+        fit: "shrink"
+      });
+    });
+  }
+}
+
 function renderSlide(slide, deck, spec, pageNumber) {
   if (spec.kind === "cover") {
     addBlueChrome(slide, deck);
@@ -3583,14 +4991,14 @@ function renderSlide(slide, deck, spec, pageNumber) {
         h: 1.74
       });
     }
-    addCyanFifthElementWireframe(slide, { x: 7.32, y: 2.06, w: 4.62, h: 4.62 });
+    addCyanFifthElementWireframe(slide, { x: 8.25, y: 2.78, w: 4.4, h: 4.4 });
     return;
   }
 
   if (spec.kind === "thank-you") {
     addBlueChrome(slide, deck);
     addSlideWatermark(slide, deck, true);
-    addCyanFifthElementWireframe(slide, { x: 6.10, y: 0.20, w: 5.86, h: 5.86 });
+    addCyanFifthElementWireframe(slide, { x: 5.72, y: 0.08, w: 6.9, h: 6.9 });
     slide.addText(spec.title, {
       x: 0.7,
       y: 1.45,
@@ -3602,7 +5010,7 @@ function renderSlide(slide, deck, spec, pageNumber) {
       margin: 0
     });
     slide.addShape("roundRect", {
-      x: 0.62,
+      x: 0.7,
       y: 2.55,
       w: 2.82,
       h: 1.12,
@@ -3611,10 +5019,12 @@ function renderSlide(slide, deck, spec, pageNumber) {
       fill: { color: toColor(deck.theme.colors.paper), transparency: 42 }
     });
     slide.addText(uiLabel(deck, "anyQuestions", "Any Questions?"), {
-      x: 0.95,
-      y: 2.84,
-      w: 2.15,
-      h: 0.35,
+      x: 0.7,
+      y: 2.55,
+      w: 2.82,
+      h: 1.12,
+      align: "center",
+      valign: "mid",
       fontFace: deck.theme.fonts.heading,
       fontSize: 17.5,
       color: toColor(deck.theme.colors.paper),
@@ -3625,6 +5035,21 @@ function renderSlide(slide, deck, spec, pageNumber) {
 
   if (spec.kind === "program-activation-snapshot") {
     renderProgramActivationSnapshotSlide(slide, deck, spec);
+    return;
+  }
+
+  if (spec.kind === "program-connection-status") {
+    renderProgramConnectionStatusSlide(slide, deck, spec);
+    return;
+  }
+
+  if (spec.kind === "gap-analysis-impact") {
+    renderGapAnalysisImpactSlide(slide, deck, spec);
+    return;
+  }
+
+  if (spec.kind === "gap-analysis-register") {
+    renderGapAnalysisRegisterSlide(slide, deck, spec);
     return;
   }
 
@@ -3722,6 +5147,11 @@ function renderSlide(slide, deck, spec, pageNumber) {
     return;
   }
 
+  if (spec.kind === "risks-dependencies") {
+    renderRisksDependenciesTiles(slide, deck, spec);
+    return;
+  }
+
   if (spec.kind === "program-executive-summary") {
     addKpis(slide, deck, spec.kpis, { x: 0.7, y: 2.15 }, "diamond");
     if (spec.summary) {
@@ -3746,6 +5176,16 @@ function renderSlide(slide, deck, spec, pageNumber) {
       y: 1.42,
       w: 12.18,
       h: 5.75
+    });
+    return;
+  }
+
+  if (spec.kind === "competitor-share-bar-chart") {
+    addCompetitorShareBarChart(slide, deck, spec.chart, {
+      x: 0.78,
+      y: 1.80,
+      w: 11.78,
+      h: 4.85
     });
     return;
   }

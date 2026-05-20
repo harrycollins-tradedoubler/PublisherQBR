@@ -121,6 +121,57 @@ function slideHasImageExtent(slideXml, widthInches, heightInches) {
     ));
 }
 
+function slideHasFilledShapeExtent(slideXml, widthInches, heightInches, color) {
+  const emuPerInch = 914400;
+  const shapes = slideXml.match(/<p:sp>[\s\S]*?<\/p:sp>/g) || [];
+  return shapes.some((shape) => {
+    const extent = shape.match(/<a:ext cx="(\d+)" cy="(\d+)"/);
+    if (!extent) return false;
+    const widthMatches = Math.abs(Number(extent[1]) - Math.round(widthInches * emuPerInch)) <= 8;
+    const heightMatches = Math.abs(Number(extent[2]) - Math.round(heightInches * emuPerInch)) <= 8;
+    return widthMatches && heightMatches && shape.includes(`<a:srgbClr val="${color}"`);
+  });
+}
+
+function slideHasNonHorizontalLineColor(slideXml, color) {
+  const shapes = slideXml.match(/<p:sp>[\s\S]*?<\/p:sp>/g) || [];
+  return shapes.some((shape) => {
+    if (!shape.includes('prst="line"') || !shape.includes(`<a:srgbClr val="${color}"`)) return false;
+    const extent = shape.match(/<a:ext cx="(-?\d+)" cy="(-?\d+)"/);
+    return extent && Math.abs(Number(extent[2])) > 0;
+  });
+}
+
+function slideHasEllipseColor(slideXml, color) {
+  const shapes = slideXml.match(/<p:sp>[\s\S]*?<\/p:sp>/g) || [];
+  return shapes.some((shape) => shape.includes('prst="ellipse"') && shape.includes(`<a:srgbClr val="${color}"`));
+}
+
+async function chartXmlsForSlide(zip, slideIndex) {
+  const relsPath = `ppt/slides/_rels/slide${slideIndex}.xml.rels`;
+  const relsFile = zip.file(relsPath);
+  if (!relsFile) return [];
+  const relsXml = await relsFile.async("string");
+  const chartTargets = [...relsXml.matchAll(/<Relationship[^>]*Type="[^"]*\/chart"[^>]*Target="([^"]+)"/g)]
+    .map((match) => match[1])
+    .map((target) => {
+      if (target.startsWith("/")) return target.replace(/^\//, "");
+      return target.replace(/^\.\.\//, "ppt/");
+    });
+  return Promise.all(chartTargets.map((target) => zip.file(target).async("string")));
+}
+
+function chartSeriesXmlByName(chartXml, name) {
+  const series = chartXml.match(/<c:ser>[\s\S]*?<\/c:ser>/g) || [];
+  return series.find((item) => item.includes(`<c:v>${name}</c:v>`)) || "";
+}
+
+function chartSeriesLineColor(chartXml, name) {
+  const seriesXml = chartSeriesXmlByName(chartXml, name);
+  const match = seriesXml.match(/<c:spPr>[\s\S]*?<a:ln[\s\S]*?<a:srgbClr val="([A-Fa-f0-9]{6})"/);
+  return match ? match[1].toUpperCase() : "";
+}
+
 async function renderedCoverUsesCyanWireframeAndNoUtilityPills() {
   const result = await buildPresentationResult();
   const zip = await JSZip.loadAsync(result.buffer);
@@ -129,7 +180,7 @@ async function renderedCoverUsesCyanWireframeAndNoUtilityPills() {
   const imageRels = [...slideRels.matchAll(/Target="\.\.\/media\/image[-\d]+\.png"/g)];
 
   assert(imageRels.length >= 3);
-  assert.equal(slideHasImageExtent(slideXml, 4.62, 4.62), true);
+  assert.equal(slideHasImageExtent(slideXml, 4.4, 4.4), true);
   assert.doesNotMatch(slideXml, /QBR Report|2026-01-16 to 2026-04-15|Analysis/);
 }
 
@@ -142,8 +193,11 @@ async function renderedThankYouUsesLargerCyanWireframeAndCompactQuestionBubble()
   const imageRels = [...slideRels.matchAll(/Target="\.\.\/media\/image[-\d]+\.png"/g)];
 
   assert(imageRels.length >= 2);
-  assert.equal(slideHasImageExtent(slideXml, 5.86, 5.86), true);
+  assert.equal(slideHasImageExtent(slideXml, 6.9, 6.9), true);
+  assert.match(slideXml, /Topcashback - Thank you\./);
+  assert.doesNotMatch(slideXml, /topcashback - Thank you\./);
   assert.match(slideXml, /Any Questions\?/);
+  assert.match(slideXml, /<a:pPr algn="ctr"/);
   assert.doesNotMatch(slideXml, /<a:ext cx="11018520" cy="1024128"/);
 }
 
@@ -163,11 +217,198 @@ async function executiveSummaryUsesRequestedPublisherMetrics() {
   assert(labels.every((label) => !/roi|aov|average order value|sales/i.test(label)));
 }
 
+async function executiveSummaryDescribesFullPublisherProgramScope() {
+  const deckSpec = await buildDeckSpec({
+    analysisProgramIds: ["101", "102", "103", "104", "105", "106", "107", "108", "109", "110", "111", "112"]
+  });
+  const slide = deckSpec.slides.find((item) => item.id === "executive-summary");
+
+  assert.match(slide.summary, /^Across all programs connected to topcashback, performance was mixed/i);
+  assert.doesNotMatch(slide.summary, /selected programs|Across 12 programs/i);
+}
+
+async function executiveSummaryCorrectsProvidedSelectedProgramScope() {
+  const deckSpec = await buildDeckSpec({
+    executiveSummaryText: "Across 12 selected programs, performance was mixed in Jan 2026 - Apr 2026. Conversions moved -6.9%."
+  });
+  const slide = deckSpec.slides.find((item) => item.id === "executive-summary");
+
+  assert.match(slide.summary, /^Across all programs connected to topcashback, performance was mixed/i);
+  assert.doesNotMatch(slide.summary, /12 selected programs|selected programs/i);
+}
+
+async function executiveSummaryNormalizesDirectionalVarianceText() {
+  const deckSpec = await buildDeckSpec({
+    programYoYTable: [
+      { Row: "Recent", Conversions: "140,846", "Order Value": "£22,309,036" },
+      { Row: "Previous", Conversions: "151,294", "Order Value": "£31,966,933" },
+      { Row: "Difference", Conversions: "-10,448", "Order Value": "-£9,657,897" },
+      { Row: "Variance", Conversions: "▼ -6.9%", "Order Value": "â–¼ -30.2%" }
+    ]
+  });
+  const slide = deckSpec.slides.find((item) => item.id === "executive-summary");
+  const conversions = slide.kpis.find((card) => card.label === "Conversions");
+  const orderValue = slide.kpis.find((card) => card.label === "Total Order Value");
+
+  assert.equal(conversions.summary, "140,846 vs 151,294 PY -6.9%");
+  assert.equal(conversions.delta, "-6.9%");
+  assert.equal(orderValue.summary, "£22,309,036 vs £31,966,933 PY -30.2%");
+  assert.equal(orderValue.delta, "-30.2%");
+  assert.doesNotMatch(JSON.stringify(slide), /�|â|Â|▲|▼|↗|↘/);
+}
+
+async function renderedExecutiveSummaryDoesNotUseInvalidRichTextParagraphs() {
+  const result = await buildPresentationResult();
+  const zip = await JSZip.loadAsync(result.buffer);
+  const executiveSlideIndex = result.deckSpec.slides.findIndex((slide) => slide.id === "executive-summary") + 1;
+  const slideXml = await zip.file(`ppt/slides/slide${executiveSlideIndex}.xml`).async("string");
+  const paragraphs = slideXml.match(/<a:p>[\s\S]*?<\/a:p>/g) || [];
+  const invalidRichTextParagraphs = paragraphs.filter((paragraph) => /<a:r>[\s\S]*<a:pPr/.test(paragraph));
+
+  assert.equal(invalidRichTextParagraphs.length, 0);
+}
+
+function assertColoredText(slideXml, text, color) {
+  const escaped = text.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  const pattern = new RegExp(`<a:srgbClr val="${color}"[\\s\\S]{0,600}<a:t>${escaped}<\\/a:t>`);
+  assert.match(slideXml, pattern);
+}
+
+async function renderedExecutiveSummaryKpiDeltasUseTrafficLightColors() {
+  const result = await buildPresentationResult({
+    programYoYTable: [
+      {
+        Row: "Recent",
+        Conversions: "93,107",
+        "Conv Rate": "25.7%",
+        Clicks: "2,500",
+        "Earnings per Click": "GBP 0.40",
+        "Earnings per Commission": "1.33x",
+        "Order Value": "Â£15,913,142",
+        "Publisher Commission": "Â£706,981",
+        "Digital Wallet": "Â£67,578",
+        "Total Earnings": "Â£774,559",
+        "Active Programs": "4"
+      },
+      {
+        Row: "Previous",
+        Conversions: "98,729",
+        "Conv Rate": "23.4%",
+        Clicks: "2,000",
+        "Earnings per Click": "GBP 0.40",
+        "Earnings per Commission": "1.14x",
+        "Order Value": "Â£15,913,142",
+        "Publisher Commission": "Â£966,077",
+        "Digital Wallet": "Â£158,760",
+        "Total Earnings": "Â£1,124,837",
+        "Active Programs": "4"
+      },
+      {
+        Row: "Difference",
+        Conversions: "-5,622",
+        "Conv Rate": "2.3pp",
+        Clicks: "500",
+        "Earnings per Click": "GBP 0.00",
+        "Earnings per Commission": "0.19x",
+        "Order Value": "Â£0",
+        "Publisher Commission": "-Â£259,096",
+        "Digital Wallet": "-Â£91,182",
+        "Total Earnings": "-Â£350,278",
+        "Active Programs": "0"
+      },
+      {
+        Row: "Variance",
+        Conversions: "-5.7%",
+        "Conv Rate": "+9.8%",
+        Clicks: "0.0%",
+        "Earnings per Click": "0.0%",
+        "Earnings per Commission": "+16.7%",
+        "Order Value": "0.0%",
+        "Publisher Commission": "-26.8%",
+        "Digital Wallet": "-57.4%",
+        "Total Earnings": "-31.1%",
+        "Active Programs": "0.0%"
+      }
+    ]
+  });
+  const zip = await JSZip.loadAsync(result.buffer);
+  const executiveSlideIndex = result.deckSpec.slides.findIndex((slide) => slide.id === "executive-summary") + 1;
+  const slideXml = await zip.file(`ppt/slides/slide${executiveSlideIndex}.xml`).async("string");
+
+  assertColoredText(slideXml, "-5.7%", "EB5757");
+  assertColoredText(slideXml, "0.0%", "F2C94C");
+  assertColoredText(slideXml, "+9.8%", "57A66C");
+}
+
+async function renderedExecutiveSummaryKpiDeltasStayColoredWhenLocalizedSummaryDiffers() {
+  const result = await buildPresentationResult({
+    languageCode: "PL",
+    languageName: "Polish",
+    programYoYTable: [
+      {
+        Row: "Recent",
+        Conversions: "93,107",
+        "Conv Rate": "25.7%",
+        Clicks: "2,500",
+        "Earnings per Click": "GBP 0.40",
+        "Order Value": "£15,913,142",
+        "Publisher Commission": "£706,981",
+        "Digital Wallet": "£67,578",
+        "Total Earnings": "£774,559",
+        "Active Programs": "4"
+      },
+      {
+        Row: "Previous",
+        Conversions: "98,729",
+        "Conv Rate": "23.4%",
+        Clicks: "2,000",
+        "Earnings per Click": "GBP 0.40",
+        "Order Value": "£24,652,989",
+        "Publisher Commission": "£966,077",
+        "Digital Wallet": "£158,760",
+        "Total Earnings": "£1,124,837",
+        "Active Programs": "4"
+      },
+      {
+        Row: "Difference",
+        Conversions: "-5,622",
+        "Conv Rate": "2.3pp",
+        Clicks: "500",
+        "Earnings per Click": "GBP 0.00",
+        "Order Value": "-£8,739,847",
+        "Publisher Commission": "-£259,096",
+        "Digital Wallet": "-£91,182",
+        "Total Earnings": "-£350,278",
+        "Active Programs": "0"
+      },
+      {
+        Row: "Variance",
+        Conversions: "-5.7%",
+        "Conv Rate": "+9.8%",
+        Clicks: "0.0%",
+        "Earnings per Click": "0.0%",
+        "Order Value": "-35.5%",
+        "Publisher Commission": "-26.8%",
+        "Digital Wallet": "-57.4%",
+        "Total Earnings": "-31.1%",
+        "Active Programs": "0.0%"
+      }
+    ]
+  });
+  const zip = await JSZip.loadAsync(result.buffer);
+  const executiveSlideIndex = result.deckSpec.slides.findIndex((slide) => slide.id === "executive-summary") + 1;
+  const slideXml = await zip.file(`ppt/slides/slide${executiveSlideIndex}.xml`).async("string");
+
+  assert.match(slideXml, /<a:srgbClr val="EB5757"[\s\S]{0,700}<a:t>-\d+(?:[.,]\d+)?%<\/a:t>/);
+  assert.match(slideXml, /<a:srgbClr val="57A66C"[\s\S]{0,700}<a:t>\+\d+(?:[.,]\d+)?%<\/a:t>/);
+}
+
 async function kpiSummaryTableUsesMetricRowsAndAddsRequestedMetrics() {
   const deckSpec = await buildDeckSpec();
   const slide = deckSpec.slides.find((item) => item.id === "kpi-volume-conversion");
   const table = slide.tables[0];
   const metricNames = table.rows.map((row) => row[0]);
+  const earningsPerConversion = table.rows.find((row) => row[0] === "Earnings per Conversion");
 
   assert.deepEqual(table.columns, ["Metric", "Recent", "Previous", "Difference", "% Variance"]);
   assert.deepEqual(metricNames, [
@@ -175,7 +416,7 @@ async function kpiSummaryTableUsesMetricRowsAndAddsRequestedMetrics() {
     "Conversion Rate",
     "Clicks",
     "Earnings per Click",
-    "Earnings per Commission",
+    "Earnings per Conversion",
     "Total Order Value",
     "Publisher Commission",
     "Digital Wallet",
@@ -183,6 +424,98 @@ async function kpiSummaryTableUsesMetricRowsAndAddsRequestedMetrics() {
     "Active Programs"
   ]);
   assert(metricNames.every((label) => !/roi|aov|average order value/i.test(label)));
+  assert.deepEqual(earningsPerConversion, ["Earnings per Conversion", "£6.00", "£7.00", "-£1.00", "-14.3%"]);
+}
+
+async function renderedTablesApplyTrafficLightColorsToVarianceCells() {
+  const result = await buildPresentationResult({
+    programYoYTable: [
+      {
+        Row: "Recent",
+        Conversions: "93,107",
+        "Conv Rate": "25.7%",
+        Clicks: "2,500",
+        "Earnings per Click": "GBP 0.40",
+        "Order Value": "£15,913,142",
+        "Publisher Commission": "£706,981",
+        "Digital Wallet": "£67,578",
+        "Total Earnings": "£774,559",
+        "Active Programs": "4"
+      },
+      {
+        Row: "Previous",
+        Conversions: "98,729",
+        "Conv Rate": "23.4%",
+        Clicks: "2,000",
+        "Earnings per Click": "GBP 0.40",
+        "Order Value": "£15,913,142",
+        "Publisher Commission": "£966,077",
+        "Digital Wallet": "£158,760",
+        "Total Earnings": "£1,124,837",
+        "Active Programs": "4"
+      },
+      {
+        Row: "Difference",
+        Conversions: "-5,622",
+        "Conv Rate": "2.3pp",
+        Clicks: "500",
+        "Earnings per Click": "GBP 0.00",
+        "Order Value": "£0",
+        "Publisher Commission": "-£259,096",
+        "Digital Wallet": "-£91,182",
+        "Total Earnings": "-£350,278",
+        "Active Programs": "0"
+      },
+      {
+        Row: "Variance",
+        Conversions: "-5.7%",
+        "Conv Rate": "+9.8%",
+        Clicks: "0.0%",
+        "Earnings per Click": "0.0%",
+        "Order Value": "0.0%",
+        "Publisher Commission": "-26.8%",
+        "Digital Wallet": "-57.4%",
+        "Total Earnings": "-31.1%",
+        "Active Programs": "0.0%"
+      }
+    ],
+    publisherTables: {
+      topDecliningPublishers: [
+        {
+          Publisher: "Morrisons Grocery",
+          Segment: "Cashback",
+          "Sales YoY %": "-54.9%",
+          "OV YoY Change": "-GBP 251,731",
+          "OV YoY %": "-54.9%"
+        }
+      ]
+    }
+  });
+  const zip = await JSZip.loadAsync(result.buffer);
+  const kpiSlideIndex = result.deckSpec.slides.findIndex((slide) => slide.id === "kpi-volume-conversion") + 1;
+  const kpiXml = await zip.file(`ppt/slides/slide${kpiSlideIndex}.xml`).async("string");
+
+  assertColoredText(kpiXml, "-5.7%", "EB5757");
+  assertColoredText(kpiXml, "0.0%", "F2C94C");
+  assertColoredText(kpiXml, "+9.8%", "57A66C");
+}
+
+async function renderedTablesCenterHeadersAndValues() {
+  const result = await buildPresentationResult();
+  const zip = await JSZip.loadAsync(result.buffer);
+  let tableCount = 0;
+
+  for (let index = 1; index <= result.deckSpec.slides.length; index += 1) {
+    const slideXml = await zip.file(`ppt/slides/slide${index}.xml`).async("string");
+    const tableBlocks = slideXml.match(/<a:tbl>[\s\S]*?<\/a:tbl>/g) || [];
+    tableBlocks.forEach((tableXml) => {
+      tableCount += 1;
+      assert.match(tableXml, /algn="ctr"/);
+      assert.doesNotMatch(tableXml, /algn="l"|algn="r"/);
+    });
+  }
+
+  assert(tableCount > 0);
 }
 
 async function programActivationSnapshotSlideFollowsKpiSummary() {
@@ -245,7 +578,7 @@ async function renderedActivationSnapshotUsesTdLineGridStyle() {
   assert.doesNotMatch(slideXml, /\sb="1"/);
 }
 
-async function renderedActivationSnapshotUsesBrandedFifthElementDivider() {
+async function renderedActivationSnapshotUsesOriginalLineDivider() {
   const result = await buildPresentationResult({
     publisherTables: {
       programActivationSnapshotTable: [
@@ -259,19 +592,16 @@ async function renderedActivationSnapshotUsesBrandedFifthElementDivider() {
   const activationSlideIndex = result.deckSpec.slides.findIndex((slide) => slide.id === "program-activation-snapshot") + 1;
   const zip = await JSZip.loadAsync(result.buffer);
   const slideXml = await zip.file(`ppt/slides/slide${activationSlideIndex}.xml`).async("string");
-  const slideRels = await zip.file(`ppt/slides/_rels/slide${activationSlideIndex}.xml.rels`).async("string");
-  const imageRels = [...slideRels.matchAll(/Target="\.\.\/media\/image[-\d]+\.png"/g)];
   const extents = [...slideXml.matchAll(/<a:ext cx="(\d+)" cy="(\d+)"/g)]
     .map((match) => ({ cx: Number(match[1]), cy: Number(match[2]) }));
   const emuPerInch = 914400;
-  const hasWideThinDivider = extents.some((extent) => (
+  const hasAssetDivider = extents.some((extent) => (
     Math.abs(extent.cx - Math.round(4.72 * emuPerInch)) <= 8
       && Math.abs(extent.cy - Math.round(3.34 * emuPerInch)) <= 8
   ));
 
-  assert(imageRels.length >= 2);
-  assert.equal(hasWideThinDivider, true);
-  assert.doesNotMatch(slideXml, /prst="line"/);
+  assert.equal(hasAssetDivider, false);
+  assert.match(slideXml, /prst="line"/);
 }
 
 async function renderedSlideUtilityTextIsRemovedAndTableTitlesAreCentered() {
@@ -599,14 +929,545 @@ async function competitorAnalysisSlideIncludesWeeklyComboChart() {
   });
   const slide = deckSpec.slides.find((item) => item.id === "competitor-analysis");
 
-  assert.equal(slide.chart.type, "weekly-pub-comm-combo");
+  assert.equal(slide.chart.type, "weekly-pub-comm-line");
   assert.deepEqual(slide.chart.categories, ["2026-01-05", "2026-01-12"]);
-  assert.equal(slide.chart.series[0].renderAs, "bar");
+  assert.equal(slide.chart.series[0].renderAs, "line");
   assert.equal(slide.chart.series[0].label, "Your Site");
   assert.equal(slide.chart.series[1].renderAs, "line");
   assert.equal(slide.chart.series[1].label, "Publisher 1");
   assert.deepEqual(slide.chart.series[0].values, [80000, 75000]);
   assert.deepEqual(slide.chart.series[1].values, [18500, 21000]);
+}
+
+async function competitorWeeklyComboChartPreservesMissingValuesWithoutZeroing() {
+  const deckSpec = await buildDeckSpec({
+    publisherTables: {
+      competitorAnalysisTable: [
+        {
+          Metric: "Programs with Pub Comm",
+          "Your Site": "2",
+          "Publisher 1": "1"
+        }
+      ],
+      competitorWeeklyPubCommChart: [
+        {
+          Week: "2026-01-05",
+          "Your Site": "GBP 1,000",
+          "Publisher 1": "GBP 500",
+          "Publisher 2": ""
+        },
+        {
+          Week: "2026-01-12",
+          "Your Site": "",
+          "Publisher 1": "n/a",
+          "Publisher 2": "GBP 250"
+        },
+        {
+          Week: "2026-01-19",
+          "Your Site": "GBP 3,000",
+          "Publisher 1": "GBP 750",
+          "Publisher 2": "-"
+        }
+      ]
+    }
+  });
+  const slide = deckSpec.slides.find((item) => item.id === "competitor-analysis");
+
+  assert.deepEqual(slide.chart.series[0].values, [1000, null, 3000]);
+  assert.deepEqual(slide.chart.series[1].values, [500, null, 750]);
+  assert.deepEqual(slide.chart.series[2].values, [null, 250, null]);
+}
+
+async function renderedCompetitorWeeklyChartMasksTemplateArtwork() {
+  const result = await buildPresentationResult({
+    publisherTables: {
+      competitorAnalysisTable: [
+        {
+          Metric: "Programs with Pub Comm",
+          "Your Site": "2",
+          "Publisher 1": "1"
+        }
+      ],
+      competitorWeeklyPubCommChart: [
+        {
+          Week: "2026-01-05",
+          "Your Site": "GBP 1,000",
+          "Publisher 1": "GBP 500"
+        },
+        {
+          Week: "2026-01-12",
+          "Your Site": "GBP 2,000",
+          "Publisher 1": "GBP 750"
+        }
+      ]
+    }
+  });
+  const zip = await JSZip.loadAsync(result.buffer);
+  const competitorSlideIndex = result.deckSpec.slides.findIndex((slide) => slide.id === "competitor-analysis") + 1;
+  const slideXml = await zip.file(`ppt/slides/slide${competitorSlideIndex}.xml`).async("string");
+
+  assert.equal(slideHasFilledShapeExtent(slideXml, 12.18, 3.42, "F3F4F6"), true);
+  assert.equal(slideHasFilledShapeExtent(slideXml, 11.52, 2.64, "F3F4F6"), true);
+}
+
+async function renderedCompetitorWeeklyChartConnectsAcrossMissingLineValues() {
+  const result = await buildPresentationResult({
+    publisherTables: {
+      competitorAnalysisTable: [
+        {
+          Metric: "Programs with Pub Comm",
+          "Your Site": "2",
+          "Publisher 1": "1"
+        }
+      ],
+      competitorWeeklyPubCommChart: [
+        {
+          Week: "2026-01-05",
+          "Your Site": "GBP 1,000",
+          "Publisher 1": "GBP 500"
+        },
+        {
+          Week: "2026-01-12",
+          "Your Site": "GBP 1,500",
+          "Publisher 1": ""
+        },
+        {
+          Week: "2026-01-19",
+          "Your Site": "GBP 2,000",
+          "Publisher 1": "GBP 750"
+        }
+      ]
+    }
+  });
+  const zip = await JSZip.loadAsync(result.buffer);
+  const competitorSlideIndex = result.deckSpec.slides.findIndex((slide) => slide.id === "competitor-analysis") + 1;
+  const chartXmls = await chartXmlsForSlide(zip, competitorSlideIndex);
+  const chartXml = chartXmls.join("\n");
+
+  assert.equal(chartXmls.length, 1);
+  assert.match(chartXml, /<c:lineChart>/);
+  assert.match(chartXml, /<c:dispBlanksAs val="span"\/>/);
+  assert.match(chartXml, /<c:pt idx="1"><c:v><\/c:v><\/c:pt>/);
+}
+
+async function renderedCompetitorWeeklyChartUsesNativeContinuousLineChart() {
+  const result = await buildPresentationResult({
+    publisherTables: {
+      competitorAnalysisTable: [
+        {
+          Metric: "Programs with Pub Comm",
+          "Your Site": "2",
+          "Publisher 1": "1",
+          "Publisher 2": "1",
+          "Publisher 3": "1",
+          "Publisher 4": "1"
+        }
+      ],
+      competitorWeeklyPubCommChart: [
+        {
+          Week: "2026-01-05",
+          "Your Site": "GBP 1,000",
+          "Publisher 1": "GBP 500",
+          "Publisher 2": "GBP 300",
+          "Publisher 3": "GBP 200",
+          "Publisher 4": "GBP 100"
+        },
+        {
+          Week: "2026-01-12",
+          "Your Site": "GBP 1,500",
+          "Publisher 1": "",
+          "Publisher 2": "GBP 350",
+          "Publisher 3": "GBP 250",
+          "Publisher 4": "GBP 120"
+        },
+        {
+          Week: "2026-01-19",
+          "Your Site": "GBP 2,000",
+          "Publisher 1": "GBP 750",
+          "Publisher 2": "GBP 400",
+          "Publisher 3": "GBP 260",
+          "Publisher 4": "GBP 130"
+        }
+      ]
+    }
+  });
+  const zip = await JSZip.loadAsync(result.buffer);
+  const competitorSlideIndex = result.deckSpec.slides.findIndex((slide) => slide.id === "competitor-analysis") + 1;
+  const slideXml = await zip.file(`ppt/slides/slide${competitorSlideIndex}.xml`).async("string");
+  const chartXmls = await chartXmlsForSlide(zip, competitorSlideIndex);
+  const chartXml = chartXmls.join("\n");
+
+  assert.equal(chartXmls.length, 1);
+  assert.match(chartXml, /<c:lineChart>/);
+  assert.match(chartXml, /<c:dispBlanksAs val="span"\/>/);
+  assert.match(chartXml, /<c:symbol val="none"\/>/);
+  assert.doesNotMatch(chartXml, /<c:barChart>/);
+  assert.equal(chartSeriesLineColor(chartXml, "Publisher 4"), "EB5757");
+  assert.doesNotMatch(slideXml, /prst="line"[\s\S]{0,500}F28E2B/);
+  assert.equal(slideHasEllipseColor(slideXml, "F28E2B"), false);
+}
+
+async function topNewProgramsMovesImmediatelyAfterMoversAndCompetitorShareFollowsAnalysis() {
+  const deckSpec = await buildDeckSpec({
+    publisherTables: {
+      competitorAnalysisTable: [
+        {
+          "Competitor Group Summary": "Pub Comm of the above PP",
+          "Your Site": "630",
+          "Publisher 1": "180",
+          "Publisher 2": "110",
+          "Publisher 3": "30",
+          "Publisher 4": "40",
+          "Distinct comp. prog. #": "24"
+        },
+        {
+          "Competitor Group Summary": "Pub Comm of the above",
+          "Your Site": "640",
+          "Publisher 1": "140",
+          "Publisher 2": "120",
+          "Publisher 3": "50",
+          "Publisher 4": "50",
+          "Distinct comp. prog. #": "24"
+        }
+      ],
+      brandNewProgramsTable: [
+        {
+          "Program ID": "3333",
+          "Program Name": "New Retailer",
+          Conversions: "10",
+          "Order Value": "GBP 1,000",
+          "Publisher Commission": "GBP 100",
+          "Digital Wallet": "GBP 0",
+          "Total Earnings": "GBP 100"
+        }
+      ]
+    }
+  });
+  const ids = deckSpec.slides.map((slide) => slide.id);
+  const moversIndex = ids.indexOf("movers-shakers-publisher-commission");
+  const brandNewIndex = ids.indexOf("brand-new-publishers");
+  const competitorAnalysisIndex = ids.indexOf("competitor-analysis");
+  const shareIndex = ids.indexOf("competitor-share-pub-comm");
+  const shareSlide = deckSpec.slides[shareIndex];
+
+  assert.equal(brandNewIndex, moversIndex + 1);
+  assert.equal(competitorAnalysisIndex, 8);
+  assert.equal(shareIndex, competitorAnalysisIndex + 1);
+  assert.equal(shareSlide.kind, "competitor-share-bar-chart");
+  assert.deepEqual(shareSlide.chart.categories, ["Your Site", "Comp. A", "Comp. B", "Comp. C", "Comp. D"]);
+  assert.deepEqual(shareSlide.chart.series.map((series) => series.label), ["% of Site Group PP", "% of Site Group"]);
+  assert.deepEqual(shareSlide.chart.series[0].values, [63.6, 18.2, 11.1, 3, 4]);
+  assert.deepEqual(shareSlide.chart.series[1].values, [64, 14, 12, 5, 5]);
+}
+
+async function programConnectionStatusSlideFollowsTopNewProgramsAndRendersKey() {
+  const result = await buildPresentationResult({
+    programStatusCreatedFromDate: "2025-11-19",
+    publisherTables: {
+      brandNewProgramsTable: [
+        {
+          "Program ID": "392254",
+          "Program Name": "Everpress",
+          Conversions: "1",
+          "Order Value": "GBP 100",
+          "Publisher Commission": "GBP 10",
+          "Digital Wallet": "GBP 0",
+          "Total Earnings": "GBP 10"
+        }
+      ],
+      programConnectionStatusTable: [
+        {
+          "Program ID": "392254",
+          "Program Name": "Everpress",
+          "Status ID": "3",
+          "Connection Status": "Accepted"
+        },
+        {
+          "Program ID": "392637",
+          "Program Name": "Atlanta Braves",
+          "Status ID": "0",
+          "Connection Status": "Not Connected"
+        },
+        {
+          "Program ID": "392847",
+          "Program Name": "Bosch DIY UK",
+          "Status ID": "2",
+          "Connection Status": "Hold UC"
+        },
+        {
+          "Program ID": "397866",
+          "Program Name": "York - MSc Computer Science",
+          "Status ID": "0",
+          "Connection Status": "Not Connected"
+        }
+      ]
+    }
+  });
+  const ids = result.deckSpec.slides.map((slide) => slide.id);
+  const statusIndex = ids.indexOf("program-connection-status");
+  const zip = await JSZip.loadAsync(result.buffer);
+  const slideXml = await zip.file(`ppt/slides/slide${statusIndex + 1}.xml`).async("string");
+
+  assert.equal(statusIndex, ids.indexOf("brand-new-publishers") + 1);
+  assert.equal(ids[statusIndex + 1], "competitor-analysis");
+  assert.deepEqual(
+    result.deckSpec.slides[statusIndex].programConnectionStatus.rows.map((row) => row.programName),
+    ["Everpress", "Bosch DIY UK", "Atlanta Braves", "York - MSc Computer Science"]
+  );
+  assert.deepEqual(
+    result.deckSpec.slides[statusIndex].programConnectionStatus.rows.map((row) => row.status),
+    ["Accepted", "Hold Under Consideration", "Not Connected", "Not Connected"]
+  );
+  assert.match(slideXml, /Program Connection Status/);
+  assert.doesNotMatch(slideXml, /Programs created since the three-month lookback cutoff/);
+  assert.match(slideXml, /4 programs reviewed/);
+  assert.match(slideXml, /Created from 19 November 2025/);
+  assert.match(slideXml, /Everpress/);
+  assert.match(slideXml, /Atlanta Braves/);
+  assert.match(slideXml, /Bosch DIY UK/);
+  assert.match(slideXml, /York - MSc Computer Science/);
+  assert.doesNotMatch(slideXml, /York - MSc Computer\.\.\./);
+  assert.match(slideXml, /0 Not Conn\./);
+  assert.match(slideXml, /2 Hold UC/);
+  assert.match(slideXml, /3 Accepted/);
+  assert.match(slideXml, /<a:srgbClr val="57A66C"/);
+  assert.match(slideXml, /<a:srgbClr val="8A94A6"/);
+  assert.match(slideXml, /<a:srgbClr val="F2C94C"/);
+}
+
+async function gapAnalysisImpactSlideUsesAssetUnderlayAndOmitsBottomBreakdown() {
+  const result = await buildPresentationResult({
+    client: "TopCashBack",
+    publisherTables: {
+      programGapAnalysisTable: [
+        {
+          "Program Name": "Philips Hue UK - AFF",
+          "Program ID": "354193",
+          TopCashBack: "Accepted",
+          "Comp A": "Pub Comm",
+          "Comp B": "Pub Comm",
+          "Comp C": "Pub Comm",
+          "Comp D": "Pub Comm",
+          "Competitor Pub Comm": "£3,500",
+          "Gap Type": "Activation",
+          "Recommended Action": "Activate"
+        },
+        {
+          "Program Name": "SupremeCBD",
+          "Program ID": "335495",
+          TopCashBack: "No Connection",
+          "Comp A": "Pub Comm",
+          "Comp B": "No Connection",
+          "Comp C": "No Connection",
+          "Comp D": "No Connection",
+          "Competitor Pub Comm": "£1,000",
+          "Gap Type": "Application",
+          "Recommended Action": "Apply"
+        },
+        {
+          "Program Name": "HP Store",
+          "Program ID": "21701",
+          TopCashBack: "Clicks",
+          "Comp A": "Pub Comm",
+          "Comp B": "Clicks",
+          "Comp C": "No Connection",
+          "Comp D": "Denied",
+          "Competitor Pub Comm": "£600",
+          "Gap Type": "Click Leakage",
+          "Recommended Action": "Fix tracking / conversion"
+        }
+      ],
+      programConnectionStatusTable: [
+        {
+          "Program ID": "354193",
+          "Program Name": "Philips Hue UK - AFF",
+          "Status ID": "3",
+          "Connection Status": "Accepted"
+        }
+      ]
+    }
+  });
+  const slideIndex = result.deckSpec.slides.findIndex((slide) => slide.id === "gap-analysis-impact") + 1;
+  const slide = result.deckSpec.slides[slideIndex - 1];
+  const ids = result.deckSpec.slides.map((item) => item.id);
+  const zip = await JSZip.loadAsync(result.buffer);
+  const slideXml = await zip.file(`ppt/slides/slide${slideIndex}.xml`).async("string");
+  const slideRels = await zip.file(`ppt/slides/_rels/slide${slideIndex}.xml.rels`).async("string");
+
+  assert(slideIndex > 0);
+  assert.equal(ids[slideIndex - 2], "brand-new-publishers");
+  assert.equal(ids[slideIndex], "gap-analysis-register");
+  assert.equal(slide.kind, "gap-analysis-impact");
+  assert.match(slide.title, /Growth opportunity/i);
+  assert.equal(slide.kpis[0].value, "£5.1k");
+  assert.equal(slide.kpis[1].value, "3");
+  assert.equal(slide.kpis[2].value, "1");
+  assert.match(slideXml, /<a:t>£5\.1k<\/a:t>/);
+  assert.match(slideRels, /Target="\.\.\/media\/image[-\d]+\.png"/);
+  assert.equal(slideHasImageExtent(slideXml, 3.15, 3.15), false);
+  assert.equal(slideHasImageExtent(slideXml, 4.65, 4.65), true);
+  assert.doesNotMatch(slideXml, /<a:t>Activation<\/a:t>/);
+  assert.doesNotMatch(slideXml, /<a:t>Application<\/a:t>/);
+  assert.doesNotMatch(slideXml, /<a:t>Click leakage<\/a:t>/);
+  assert.doesNotMatch(slideXml, /<a:t>Recovery<\/a:t>/);
+}
+
+async function gapAnalysisSectionUsesThreeColumnRegisterAndPaginatesLargeLists() {
+  const gapRows = Array.from({ length: 80 }, (_, index) => {
+    const status = index % 4 === 0
+      ? "Accepted"
+      : index % 4 === 1
+        ? "Clicks"
+        : index % 4 === 2
+          ? "No Connection"
+          : "Ended";
+    const gapType = status === "Accepted"
+      ? "Activation"
+      : status === "Clicks"
+        ? "Click Leakage"
+        : status === "No Connection"
+          ? "Application"
+          : "Recovery";
+    return {
+      "Program Name": index === 0 ? "Philips Hue UK - AFF" : `Gap Program ${String(index + 1).padStart(2, "0")}`,
+      "Program ID": String(350000 + index),
+      TopCashBack: status,
+      "Comp A": "Pub Comm",
+      "Comp B": index % 3 === 0 ? "Pub Comm" : "Accepted",
+      "Comp C": index % 5 === 0 ? "Pub Comm" : "No Connection",
+      "Comp D": index % 7 === 0 ? "Pub Comm" : "Denied",
+      "Competitor Pub Comm": `GBP ${3500 - index * 75}`,
+      "Gap Type": gapType,
+      "Recommended Action": gapType === "Activation" ? "Activate accepted program" : "Build outreach plan"
+    };
+  });
+  const result = await buildPresentationResult({
+    client: "TopCashBack",
+    publisherTables: {
+      programGapAnalysisTable: gapRows,
+      brandNewProgramsTable: [
+        {
+          "Program ID": "392254",
+          "Program Name": "Everpress",
+          Conversions: "1",
+          "Order Value": "GBP 100",
+          "Publisher Commission": "GBP 10",
+          "Digital Wallet": "GBP 0",
+          "Total Earnings": "GBP 10"
+        }
+      ],
+      programConnectionStatusTable: [
+        {
+          "Program ID": "354193",
+          "Program Name": "Philips Hue UK - AFF",
+          "Status ID": "3",
+          "Connection Status": "Accepted"
+        }
+      ]
+    }
+  });
+  const ids = result.deckSpec.slides.map((slide) => slide.id);
+  const impactIndex = ids.indexOf("gap-analysis-impact");
+  const zip = await JSZip.loadAsync(result.buffer);
+  const registerXml = await zip.file(`ppt/slides/slide${ids.indexOf("gap-analysis-register") + 1}.xml`).async("string");
+  const registerPage2Xml = await zip.file(`ppt/slides/slide${ids.indexOf("gap-analysis-register-2") + 1}.xml`).async("string");
+  const registerSlide = result.deckSpec.slides.find((slide) => slide.id === "gap-analysis-register");
+  const registerSlide2 = result.deckSpec.slides.find((slide) => slide.id === "gap-analysis-register-2");
+
+  assert.deepEqual(ids.slice(impactIndex, impactIndex + 4), [
+    "gap-analysis-impact",
+    "gap-analysis-register",
+    "gap-analysis-register-2",
+    "program-connection-status"
+  ]);
+  assert.equal(registerSlide.kind, "gap-analysis-register");
+  assert.equal(registerSlide.gapRegister.rows.length, 66);
+  assert.equal(registerSlide2.gapRegister.rows.length, 14);
+  assert.equal(registerSlide.gapRegister.columnCount, 3);
+  assert.equal(registerSlide.gapRegister.totalRows, 80);
+  assert.equal(ids.includes("gap-analysis-priority-programs"), false);
+  assert.equal(ids.includes("gap-analysis-portfolio"), false);
+  assert.equal(ids.includes("gap-analysis-detail"), false);
+  assert.match(registerXml, /Gap Analysis Register \(1\/2\)/);
+  assert.match(registerXml, /Program \/ ID \/ Status \/ Pub Comm/);
+  assert.match(registerXml, /Philips Hue UK - AFF/);
+  assert.match(registerXml, /350000/);
+  assert.match(registerXml, /£3,500/);
+  assert.match(registerPage2Xml, /Gap Analysis Register \(2\/2\)/);
+  assert.match(registerPage2Xml, /Gap Program 80/);
+  assert.doesNotMatch(registerXml, /Gap Program 80/);
+  assert.doesNotMatch(registerXml, /Priority programs to close the gap/);
+}
+
+async function programConnectionStatusPaginatesLargeProgramLists() {
+  const statusRows = Array.from({ length: 121 }, (_, index) => ({
+    "Program ID": String(400000 + index),
+    "Program Name": `Program ${index + 1}`,
+    "Status ID": index % 3 === 0 ? "0" : "3",
+    "Connection Status": index % 3 === 0 ? "Not Connected" : "Accepted"
+  }));
+  const deckSpec = await buildDeckSpec({
+    programStatusCreatedFromDate: "2025-11-19",
+    publisherTables: {
+      brandNewProgramsTable: [
+        {
+          "Program ID": "392254",
+          "Program Name": "Everpress",
+          Conversions: "1",
+          "Order Value": "GBP 100",
+          "Publisher Commission": "GBP 10",
+          "Digital Wallet": "GBP 0",
+          "Total Earnings": "GBP 10"
+        }
+      ],
+      programConnectionStatusTable: statusRows
+    }
+  });
+  const statusSlides = deckSpec.slides.filter((slide) => slide.id.startsWith("program-connection-status"));
+
+  assert.equal(statusSlides.length, 2);
+  assert.equal(statusSlides[0].title, "Program Connection Status (1/2)");
+  assert.equal(statusSlides[1].title, "Program Connection Status (2/2)");
+  assert.equal(statusSlides[0].programConnectionStatus.rows.length, 84);
+  assert.equal(statusSlides[1].programConnectionStatus.rows.length, 37);
+  assert.equal(statusSlides[0].programConnectionStatus.totalRows, 121);
+  assert.equal(statusSlides[0].programConnectionStatus.cutoffDate, "2025-11-19");
+}
+
+async function renderedCompetitorShareChartUsesThemeBarsAndLabels() {
+  const result = await buildPresentationResult({
+    publisherTables: {
+      competitorAnalysisTable: [
+        {
+          "Competitor Group Summary": "Pub Comm of the above PP",
+          "Your Site": "630",
+          "Publisher 1": "180",
+          "Publisher 2": "110",
+          "Publisher 3": "30",
+          "Publisher 4": "40"
+        },
+        {
+          "Competitor Group Summary": "Pub Comm of the above",
+          "Your Site": "640",
+          "Publisher 1": "140",
+          "Publisher 2": "120",
+          "Publisher 3": "50",
+          "Publisher 4": "50"
+        }
+      ]
+    }
+  });
+  const zip = await JSZip.loadAsync(result.buffer);
+  const shareSlideIndex = result.deckSpec.slides.findIndex((slide) => slide.id === "competitor-share-pub-comm") + 1;
+  const slideXml = await zip.file(`ppt/slides/slide${shareSlideIndex}.xml`).async("string");
+
+  assert.match(slideXml, /Share of publisher commission within competitor group/);
+  assert.match(slideXml, /Your Site/);
+  assert.match(slideXml, /Comp\. A/);
+  assert.match(slideXml, /% of Site Group PP/);
+  assert.match(slideXml, /% of Site Group/);
+  assert.match(slideXml, /<a:srgbClr val="2F6FF2"/);
+  assert.match(slideXml, /64%/);
 }
 
 async function productionPublisherRequestKeepsFullPublisherSlideSet() {
@@ -702,14 +1563,21 @@ async function productionPublisherRequestKeepsFullPublisherSlideSet() {
   assert(ids.includes("executive-summary"));
   assert(ids.includes("movers-shakers-publisher-commission"));
   assert(ids.includes("competitor-analysis"));
+  assert(ids.includes("competitor-share-pub-comm"));
   assert(ids.includes("top-programs-competitor-performance"));
   assert.equal(ids.includes("sales-growth-signals"), false);
   assert(ids.includes("risks-dependencies"));
   assert(ids.includes("brand-new-publishers"));
   assert(ids.includes("thank-you"));
   assert.deepEqual(
-    ids.slice(ids.indexOf("competitor-analysis"), ids.indexOf("brand-new-publishers") + 1),
-    ["competitor-analysis", "top-programs-competitor-performance", "brand-new-publishers"]
+    ids.slice(ids.indexOf("movers-shakers-publisher-commission"), ids.indexOf("top-programs-competitor-performance") + 1),
+    [
+      "movers-shakers-publisher-commission",
+      "brand-new-publishers",
+      "competitor-analysis",
+      "competitor-share-pub-comm",
+      "top-programs-competitor-performance"
+    ]
   );
   assert.deepEqual(ids.slice(-2), ["risks-dependencies", "thank-you"]);
 
@@ -749,6 +1617,114 @@ async function publisherQbrAnalysisUsesProgramLanguage() {
   assert.doesNotMatch(withoutMetricName, /\bpublishers?\b/i);
 }
 
+async function riskDependenciesUseEvidenceBackedMitigations() {
+  const deckSpec = await buildDeckSpec({
+    publisherOverviewObservations: [
+      "10 brand-new programs were activated, contributing £0 in combined OV."
+    ],
+    publisherTables: {
+      riskDependenciesTable: [
+        {
+          "Program Name": "Decline Retailer",
+          "Risk Type": "YoY decline",
+          Evidence: "Conversions -20, total earnings -GBP 500",
+          Priority: "High"
+        },
+        {
+          "Program Name": "Traffic Retailer",
+          "Risk Type": "High traffic, zero conversions",
+          Evidence: "Traffic events 2,500, conversions 0",
+          Priority: "Medium"
+        }
+      ],
+      brandNewProgramsTable: [
+        {
+          "Program ID": "111",
+          "Program Name": "New Zero One",
+          Conversions: "0",
+          "Order Value": "GBP 0",
+          "Publisher Commission": "GBP 0",
+          "Digital Wallet": "GBP 0",
+          "Total Earnings": "GBP 0"
+        },
+        {
+          "Program ID": "222",
+          "Program Name": "New Zero Two",
+          Conversions: "0",
+          "Order Value": "GBP 0",
+          "Publisher Commission": "GBP 0",
+          "Digital Wallet": "GBP 0",
+          "Total Earnings": "GBP 0"
+        }
+      ]
+    }
+  });
+
+  const riskSlide = deckSpec.slides.find((slide) => slide.id === "risks-dependencies");
+  const table = riskSlide.tables[0];
+  const rowText = table.rows.map((row) => row.join(" ")).join(" ");
+
+  assert.deepEqual(table.columns, ["Risk / rationale"]);
+  assert.match(rowText, /Decline Retailer.*Conversions -20, total earnings -GBP 500/i);
+  assert.match(rowText, /Traffic Retailer.*Traffic events 2,500, conversions 0/i);
+  assert.match(rowText, /New Zero One, New Zero Two/i);
+  assert.match(rowText, /Action:/i);
+  assert.match(rowText, /small controlled traffic sample|visible launch placement/i);
+  assert.doesNotMatch(rowText, /confirm the root cause|assign an owner|agree a recovery action/i);
+  assert.doesNotMatch(rowText, /Order value mix volatility.*brand-new programs were activated/i);
+}
+
+async function riskDependenciesFallbackRowsKeepSpecificAnalysisEvidence() {
+  const deckSpec = await buildDeckSpec({
+    publisherOverviewObservations: [
+      "Publisher commission concentration: Currys generated Â£180,000 of the Â£240,000 commission total, creating dependency if its cashback placement drops.",
+      "Conversion pressure: Argos traffic increased 34% but conversions fell 18%, indicating landing-page or tracking leakage."
+    ],
+    publisherTables: {}
+  });
+  const riskSlide = deckSpec.slides.find((slide) => slide.id === "risks-dependencies");
+  const rowText = riskSlide.tables[0].rows.map((row) => row.join(" ")).join(" ");
+
+  assert.match(rowText, /Currys generated £180,000 of the £240,000 commission total/i);
+  assert.match(rowText, /Argos traffic increased 34% but conversions fell 18%/i);
+  assert.match(rowText, /Protect the leading program's placement/i);
+  assert.match(rowText, /Audit the affected program's landing path/i);
+  assert(rowText.length < 1100);
+  assert.doesNotMatch(rowText, /Program concentration risk High Reduce reliance on the exposed program set/i);
+  assert.doesNotMatch(rowText, /confirm the root cause|assign an owner|agree a recovery action/i);
+}
+
+async function renderedRiskDependenciesUsesLightTileLayoutWithoutGenericColumns() {
+  const result = await buildPresentationResult({
+    publisherOverviewObservations: [
+      "Publisher commission concentration: Currys generated £180,000 of the £240,000 commission total, creating dependency if its cashback placement drops.",
+      "Conversion pressure: Argos traffic increased 34% but conversions fell 18%, indicating landing-page or tracking leakage.",
+      "Order value mix volatility: Skimlinks added +£590,200 in OV but lower-value programs declined.",
+      "Activation dependency: two new programs show 0 order value and 0 conversions."
+    ],
+    publisherTables: {}
+  });
+  const zip = await JSZip.loadAsync(result.buffer);
+  const riskSlideIndex = result.deckSpec.slides.findIndex((slide) => slide.id === "risks-dependencies") + 1;
+  const slideXml = await zip.file(`ppt/slides/slide${riskSlideIndex}.xml`).async("string");
+
+  assert.doesNotMatch(slideXml, /<a:tbl>/);
+  assert.doesNotMatch(slideXml, /<a:t>Impact<\/a:t>|<a:t>Mitigation<\/a:t>/);
+  assert.doesNotMatch(slideXml, /…|\.\.\./);
+  assert.match(slideXml, /<a:srgbClr val="F3F4F6"/);
+  assert.match(slideXml, /<a:srgbClr val="D7E4FF"/);
+  assert.match(slideXml, /<a:srgbClr val="2F6FF2"/);
+  assert.doesNotMatch(slideXml, /<p:bgPr><a:solidFill><a:srgbClr val="2F6FF2"/);
+  assert.doesNotMatch(slideXml, /<a:t>01<\/a:t>|<a:t>02<\/a:t>|<a:t>03<\/a:t>/);
+  assert.match(slideXml, /<a:pPr algn="ctr"/);
+  assert.match(slideXml, /<a:t>Analysis<\/a:t>/);
+  assert.match(slideXml, /<a:t>Action<\/a:t>/);
+  assert.match(slideXml, /Protect the leading program&apos;s placement|Audit the affected program&apos;s landing path|Prioritise higher-basket placements/i);
+  assert.doesNotMatch(slideXml, /confirm the root cause|assign an owner|agree a recovery action/i);
+  assert.match(slideXml, /Currys generated £180,000/);
+  assert.match(slideXml, /Argos traffic increased 34%/);
+}
+
 async function run() {
   const tests = [
     coverUsesPublisherPerformanceReviewTitle,
@@ -756,10 +1732,18 @@ async function run() {
     renderedCoverUsesCyanWireframeAndNoUtilityPills,
     renderedThankYouUsesLargerCyanWireframeAndCompactQuestionBubble,
     executiveSummaryUsesRequestedPublisherMetrics,
+    executiveSummaryDescribesFullPublisherProgramScope,
+    executiveSummaryCorrectsProvidedSelectedProgramScope,
+    executiveSummaryNormalizesDirectionalVarianceText,
+    renderedExecutiveSummaryDoesNotUseInvalidRichTextParagraphs,
+    renderedExecutiveSummaryKpiDeltasUseTrafficLightColors,
+    renderedExecutiveSummaryKpiDeltasStayColoredWhenLocalizedSummaryDiffers,
     kpiSummaryTableUsesMetricRowsAndAddsRequestedMetrics,
+    renderedTablesApplyTrafficLightColorsToVarianceCells,
+    renderedTablesCenterHeadersAndValues,
     programActivationSnapshotSlideFollowsKpiSummary,
     renderedActivationSnapshotUsesTdLineGridStyle,
-    renderedActivationSnapshotUsesBrandedFifthElementDivider,
+    renderedActivationSnapshotUsesOriginalLineDivider,
     renderedSlideUtilityTextIsRemovedAndTableTitlesAreCentered,
     programLevelAnalysisUsesPublisherCommissionHierarchy,
     topNewProgramsIncludesWalletAndSortsByTotalEarnings,
@@ -768,8 +1752,21 @@ async function run() {
     renderedMoversShakersNegativeBarsUseRedFill,
     competitorAnalysisSlideUsesAnonymousComparisonTable,
     competitorAnalysisSlideIncludesWeeklyComboChart,
+    competitorWeeklyComboChartPreservesMissingValuesWithoutZeroing,
+    renderedCompetitorWeeklyChartMasksTemplateArtwork,
+    renderedCompetitorWeeklyChartConnectsAcrossMissingLineValues,
+    renderedCompetitorWeeklyChartUsesNativeContinuousLineChart,
+    topNewProgramsMovesImmediatelyAfterMoversAndCompetitorShareFollowsAnalysis,
+    gapAnalysisImpactSlideUsesAssetUnderlayAndOmitsBottomBreakdown,
+    gapAnalysisSectionUsesThreeColumnRegisterAndPaginatesLargeLists,
+    programConnectionStatusSlideFollowsTopNewProgramsAndRendersKey,
+    programConnectionStatusPaginatesLargeProgramLists,
+    renderedCompetitorShareChartUsesThemeBarsAndLabels,
     productionPublisherRequestKeepsFullPublisherSlideSet,
-    publisherQbrAnalysisUsesProgramLanguage
+    publisherQbrAnalysisUsesProgramLanguage,
+    riskDependenciesUseEvidenceBackedMitigations,
+    riskDependenciesFallbackRowsKeepSpecificAnalysisEvidence,
+    renderedRiskDependenciesUsesLightTileLayoutWithoutGenericColumns
   ];
 
   for (const test of tests) {
