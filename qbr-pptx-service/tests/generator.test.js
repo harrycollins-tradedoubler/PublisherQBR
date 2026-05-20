@@ -1296,7 +1296,7 @@ async function gapAnalysisImpactSlideUsesAssetUnderlayAndOmitsBottomBreakdown() 
 
   assert(slideIndex > 0);
   assert.equal(ids[slideIndex - 2], "brand-new-publishers");
-  assert.equal(ids[slideIndex], "gap-analysis-register");
+  assert.equal(ids[slideIndex], "gap-analysis-top-programs");
   assert.equal(slide.kind, "gap-analysis-impact");
   assert.match(slide.title, /Growth opportunity/i);
   assert.equal(slide.kpis[0].value, "£5.1k");
@@ -1312,7 +1312,7 @@ async function gapAnalysisImpactSlideUsesAssetUnderlayAndOmitsBottomBreakdown() 
   assert.doesNotMatch(slideXml, /<a:t>Recovery<\/a:t>/);
 }
 
-async function gapAnalysisSectionUsesThreeColumnRegisterAndPaginatesLargeLists() {
+async function gapAnalysisSectionUsesTopTenSlideAndExcelReportForRemainder() {
   const gapRows = Array.from({ length: 80 }, (_, index) => {
     const status = index % 4 === 0
       ? "Accepted"
@@ -1369,33 +1369,40 @@ async function gapAnalysisSectionUsesThreeColumnRegisterAndPaginatesLargeLists()
   const ids = result.deckSpec.slides.map((slide) => slide.id);
   const impactIndex = ids.indexOf("gap-analysis-impact");
   const zip = await JSZip.loadAsync(result.buffer);
-  const registerXml = await zip.file(`ppt/slides/slide${ids.indexOf("gap-analysis-register") + 1}.xml`).async("string");
-  const registerPage2Xml = await zip.file(`ppt/slides/slide${ids.indexOf("gap-analysis-register-2") + 1}.xml`).async("string");
-  const registerSlide = result.deckSpec.slides.find((slide) => slide.id === "gap-analysis-register");
-  const registerSlide2 = result.deckSpec.slides.find((slide) => slide.id === "gap-analysis-register-2");
+  const topProgramsXml = await zip.file(`ppt/slides/slide${ids.indexOf("gap-analysis-top-programs") + 1}.xml`).async("string");
+  const topProgramsSlide = result.deckSpec.slides.find((slide) => slide.id === "gap-analysis-top-programs");
+  const reportZip = await JSZip.loadAsync(result.gapReportBuffer);
+  const reportSheetXml = await reportZip.file("xl/worksheets/sheet1.xml").async("string");
+  const registerXml = topProgramsXml;
+  const registerPage2Xml = reportSheetXml;
 
-  assert.deepEqual(ids.slice(impactIndex, impactIndex + 4), [
+  assert.deepEqual(ids.slice(impactIndex, impactIndex + 3), [
     "gap-analysis-impact",
-    "gap-analysis-register",
-    "gap-analysis-register-2",
+    "gap-analysis-top-programs",
     "program-connection-status"
   ]);
-  assert.equal(registerSlide.kind, "gap-analysis-register");
-  assert.equal(registerSlide.gapRegister.rows.length, 66);
-  assert.equal(registerSlide2.gapRegister.rows.length, 14);
-  assert.equal(registerSlide.gapRegister.columnCount, 3);
-  assert.equal(registerSlide.gapRegister.totalRows, 80);
+  assert.equal(topProgramsSlide.kind, "gap-analysis-top-programs");
+  assert.equal(topProgramsSlide.gapTopPrograms.rows.length, 10);
+  assert.equal(topProgramsSlide.gapTopPrograms.totalRows, 80);
+  assert.equal(topProgramsSlide.gapTopPrograms.reportRows, 70);
+  assert.equal(result.gapReportFileName.endsWith(".gap-analysis.xlsx"), true);
+  assert(result.gapReportBuffer.length > 1000);
   assert.equal(ids.includes("gap-analysis-priority-programs"), false);
   assert.equal(ids.includes("gap-analysis-portfolio"), false);
   assert.equal(ids.includes("gap-analysis-detail"), false);
-  assert.match(registerXml, /Gap Analysis Register \(1\/2\)/);
-  assert.match(registerXml, /Program \/ ID \/ Status \/ Pub Comm/);
-  assert.match(registerXml, /Philips Hue UK - AFF/);
-  assert.match(registerXml, /350000/);
+  assert.equal(ids.includes("gap-analysis-register"), false);
+  assert.equal(ids.includes("gap-analysis-register-2"), false);
+  assert.match(topProgramsXml, /Top 10 competitor-funded gaps/);
+  assert.match(topProgramsXml, /Philips Hue UK - AFF/);
+  assert.match(topProgramsXml, /350000/);
   assert.match(registerXml, /£3,500/);
-  assert.match(registerPage2Xml, /Gap Analysis Register \(2\/2\)/);
+  assert.match(reportSheetXml, /Pub Comm - Specified Sites/);
+  assert.doesNotMatch(reportSheetXml, /Pub Comm - All Sites/);
+  assert.match(reportSheetXml, /Connection Type/);
+  assert.match(reportSheetXml, /Programs where TopCashBack are accepted but driving no clicks \/ conversions/);
   assert.match(registerPage2Xml, /Gap Program 80/);
   assert.doesNotMatch(registerXml, /Gap Program 80/);
+  assert.doesNotMatch(reportSheetXml, /Philips Hue UK - AFF/);
   assert.doesNotMatch(registerXml, /Priority programs to close the gap/);
 }
 
@@ -1758,7 +1765,7 @@ async function run() {
     renderedCompetitorWeeklyChartUsesNativeContinuousLineChart,
     topNewProgramsMovesImmediatelyAfterMoversAndCompetitorShareFollowsAnalysis,
     gapAnalysisImpactSlideUsesAssetUnderlayAndOmitsBottomBreakdown,
-    gapAnalysisSectionUsesThreeColumnRegisterAndPaginatesLargeLists,
+    gapAnalysisSectionUsesTopTenSlideAndExcelReportForRemainder,
     programConnectionStatusSlideFollowsTopNewProgramsAndRendersKey,
     programConnectionStatusPaginatesLargeProgramLists,
     renderedCompetitorShareChartUsesThemeBarsAndLabels,

@@ -14,6 +14,7 @@ function loadPackage(name) {
 }
 
 const PptxGenJS = loadPackage("pptxgenjs");
+const JSZip = loadPackage("jszip");
 const TEMPLATE_BLUE_BG_PATH = path.join(__dirname, "..", "assets", "qbr-bg-blue.png");
 const TEMPLATE_LIGHT_BG_PATH = path.join(__dirname, "..", "assets", "qbr-bg-light.png");
 const TD_LOGO_WHITE_PATH = path.join(__dirname, "..", "assets", "td-logo-white.png");
@@ -2562,9 +2563,23 @@ function buildProgramGapAnalysis(table, input) {
 
   if (!rows.length) return null;
 
+  const revenueRows = rows
+    .filter((row) => row.competitorPubComm > 0)
+    .slice()
+    .sort((a, b) => {
+      if (b.competitorPubComm !== a.competitorPubComm) return b.competitorPubComm - a.competitorPubComm;
+      if (a.priorityRank !== b.priorityRank) return a.priorityRank - b.priorityRank;
+      return a.programName.localeCompare(b.programName, "en", { sensitivity: "base" });
+    });
+  const topRevenueRows = revenueRows.slice(0, 10);
+  const topRevenueKeys = new Set(topRevenueRows.map((row) => `${row.programId || ""}::${row.programName || ""}`));
+  const reportRows = rows.filter((row) => !topRevenueKeys.has(`${row.programId || ""}::${row.programName || ""}`));
+
   return {
     impact: buildProgramGapAnalysisImpact(table, input),
-    rows
+    rows,
+    topRevenueRows,
+    reportRows
   };
 }
 
@@ -3098,7 +3113,12 @@ function buildDeckSpec(input, theme) {
   );
   const programGapAnalysis = buildProgramGapAnalysis(input.tables.programGapAnalysisTable, input);
   const programGapAnalysisImpact = programGapAnalysis?.impact;
-  const programGapAnalysisRegisterPages = paginateProgramGapAnalysisRegister(programGapAnalysis);
+  const programGapAnalysisTopPrograms = Array.isArray(programGapAnalysis?.topRevenueRows)
+    ? programGapAnalysis.topRevenueRows
+    : [];
+  const programGapAnalysisReportRows = Array.isArray(programGapAnalysis?.reportRows)
+    ? programGapAnalysis.reportRows
+    : [];
   const moversCommissionChart = buildMoversCommissionBarChart(input.tables.moversCommissionChart || input.tables.moversCommission, input.locale);
   const competitorAnalysis = buildCompetitorAnalysisTable(input.tables.competitorAnalysisTable);
   const competitorShareChart = buildCompetitorSharePubCommChart(input.tables.competitorSharePubCommChart, input.tables.competitorAnalysisTable);
@@ -3243,20 +3263,22 @@ function buildDeckSpec(input, theme) {
       tables: [],
       gapImpact: programGapAnalysisImpact
     });
-    programGapAnalysisRegisterPages.forEach((gapRegisterPage, pageIndex) => {
+    if (programGapAnalysisTopPrograms.length) {
       slides.push({
-        id: pageIndex === 0 ? "gap-analysis-register" : `gap-analysis-register-${pageIndex + 1}`,
-        kind: "gap-analysis-register",
-        title: gapRegisterPage.pageCount > 1
-          ? `Gap Analysis Register (${pageIndex + 1}/${gapRegisterPage.pageCount})`
-          : "Gap Analysis Register",
-        subtitle: `${gapRegisterPage.totalRows} programs reviewed | Connection status and Pub Comm - Specified Sites`,
+        id: "gap-analysis-top-programs",
+        kind: "gap-analysis-top-programs",
+        title: "Top 10 competitor-funded gaps",
+        subtitle: "Programs receiving publisher commission from competitors while the primary publisher is not earning.",
         bullets: [],
         kpis: [],
         tables: [],
-        gapRegister: gapRegisterPage
+        gapTopPrograms: {
+          rows: programGapAnalysisTopPrograms,
+          totalRows: programGapAnalysis.rows.length,
+          reportRows: programGapAnalysisReportRows.length
+        }
       });
-    });
+    }
   }
 
   programConnectionStatusPages.forEach((programConnectionStatusPage, pageIndex) => {
@@ -3386,7 +3408,20 @@ function buildDeckSpec(input, theme) {
       generatedAt: new Date().toISOString()
     },
     theme,
-    slides
+    slides,
+    reports: {
+      gapAnalysis: programGapAnalysis
+        ? {
+            title: `${input.client} Gap Analysis Report`,
+            client: input.client,
+            currencyCode: input.currencyCode,
+            locale: input.locale || "en-GB",
+            topRows: programGapAnalysisTopPrograms,
+            remainingRows: programGapAnalysisReportRows,
+            allRows: programGapAnalysis.rows
+          }
+        : null
+    }
   };
 }
 
@@ -4945,6 +4980,163 @@ function renderGapAnalysisRegisterSlide(slide, deck, spec) {
   }
 }
 
+function renderGapAnalysisTopProgramsSlide(slide, deck, spec) {
+  addLightChrome(slide, deck);
+  addTitle(slide, deck, spec, deck.theme.colors.ink, deck.theme.colors.accent, false);
+
+  const payload = spec.gapTopPrograms || {};
+  const rows = Array.isArray(payload.rows) ? payload.rows.slice(0, 10) : [];
+  const totalRows = Number(payload.totalRows) || rows.length;
+  const reportRows = Number(payload.reportRows) || Math.max(0, totalRows - rows.length);
+  const maxValue = Math.max(1, ...rows.map((row) => Number(row.competitorPubComm) || 0));
+
+  slide.addText(`${rows.length} highest-value programs shown here. ${reportRows} remaining gap programs are available in the Excel report.`, {
+    x: 0.72,
+    y: 1.28,
+    w: 11.8,
+    h: 0.28,
+    fontFace: deck.theme.fonts.body,
+    fontSize: 9.4,
+    color: toColor(deck.theme.colors.muted),
+    margin: 0,
+    fit: "shrink"
+  });
+
+  const grid = { x: 0.58, y: 1.72, w: 12.18, h: 5.38 };
+  const headerH = 0.34;
+  const rowH = 0.46;
+  const cols = [
+    { key: "rank", label: "#", x: grid.x, w: 0.42, align: "center" },
+    { key: "program", label: "Program / ID", x: grid.x + 0.48, w: 3.78, align: "left" },
+    { key: "status", label: "Primary status", x: grid.x + 4.36, w: 1.52, align: "left" },
+    { key: "signal", label: "Competitor signal", x: grid.x + 5.98, w: 1.82, align: "left" },
+    { key: "bar", label: "Pub Comm - Specified Sites", x: grid.x + 7.88, w: 3.02, align: "left" },
+    { key: "value", label: "Value", x: grid.x + 11.00, w: 1.08, align: "right" }
+  ];
+
+  slide.addShape("rect", {
+    x: grid.x,
+    y: grid.y,
+    w: grid.w,
+    h: headerH,
+    line: { color: toColor("#D6DAE3"), pt: 0.25 },
+    fill: { color: toColor("#E5E8EF") }
+  });
+  cols.forEach((col) => {
+    slide.addText(col.label, {
+      x: col.x + 0.04,
+      y: grid.y + 0.10,
+      w: col.w - 0.08,
+      h: 0.14,
+      fontFace: deck.theme.fonts.heading,
+      fontSize: 7.6,
+      bold: true,
+      align: col.align,
+      color: toColor(deck.theme.colors.ink),
+      margin: 0,
+      fit: "shrink"
+    });
+  });
+
+  rows.forEach((row, index) => {
+    const y = grid.y + headerH + index * rowH;
+    const fill = index % 2 === 0 ? "#F7F8FA" : "#ECEFF4";
+    const statusColor = gapRegisterStatusColor(row.primaryStatus, deck);
+    const barW = Math.max(0.08, ((Number(row.competitorPubComm) || 0) / maxValue) * 2.35);
+    slide.addShape("rect", {
+      x: grid.x,
+      y,
+      w: grid.w,
+      h: rowH - 0.018,
+      line: { color: toColor("#E3E6EC"), pt: 0.18 },
+      fill: { color: toColor(fill) }
+    });
+    slide.addText(String(index + 1), {
+      x: cols[0].x,
+      y: y + 0.15,
+      w: cols[0].w,
+      h: 0.16,
+      fontFace: deck.theme.fonts.heading,
+      fontSize: 8,
+      bold: true,
+      align: "center",
+      color: toColor(deck.theme.colors.ink),
+      margin: 0
+    });
+    slide.addText(`${compactLabel(row.programName || "-", 38)}\n${cleanInlineText(row.programId || "-")}`, {
+      x: cols[1].x + 0.04,
+      y: y + 0.07,
+      w: cols[1].w - 0.08,
+      h: 0.30,
+      fontFace: deck.theme.fonts.body,
+      fontSize: 7.2,
+      color: toColor(deck.theme.colors.ink),
+      breakLine: true,
+      fit: "shrink",
+      margin: 0
+    });
+    slide.addShape("ellipse", {
+      x: cols[2].x + 0.02,
+      y: y + 0.18,
+      w: 0.08,
+      h: 0.08,
+      line: { color: toColor(statusColor), pt: 0 },
+      fill: { color: toColor(statusColor) }
+    });
+    slide.addText(compactLabel(row.primaryStatus || "-", 18), {
+      x: cols[2].x + 0.14,
+      y: y + 0.15,
+      w: cols[2].w - 0.18,
+      h: 0.16,
+      fontFace: deck.theme.fonts.body,
+      fontSize: 7.2,
+      color: toColor(statusColor),
+      margin: 0,
+      fit: "shrink"
+    });
+    slide.addText(compactLabel(row.competitorSignal || "-", 24), {
+      x: cols[3].x + 0.04,
+      y: y + 0.15,
+      w: cols[3].w - 0.08,
+      h: 0.16,
+      fontFace: deck.theme.fonts.body,
+      fontSize: 7.1,
+      color: toColor(deck.theme.colors.muted),
+      margin: 0,
+      fit: "shrink"
+    });
+    slide.addShape("rect", {
+      x: cols[4].x + 0.04,
+      y: y + 0.18,
+      w: cols[4].w - 0.20,
+      h: 0.08,
+      line: { color: toColor("#D9E2F7"), pt: 0 },
+      fill: { color: toColor("#D9E2F7") }
+    });
+    slide.addShape("rect", {
+      x: cols[4].x + 0.04,
+      y: y + 0.18,
+      w: barW,
+      h: 0.08,
+      line: { color: toColor(deck.theme.colors.accent), pt: 0 },
+      fill: { color: toColor(deck.theme.colors.accent) }
+    });
+    slide.addText(cleanInlineText(row.registerOpportunityDisplay || row.competitorPubCommDisplay || "-"), {
+      x: cols[5].x,
+      y: y + 0.15,
+      w: cols[5].w,
+      h: 0.16,
+      fontFace: deck.theme.fonts.heading,
+      fontSize: 7.8,
+      bold: true,
+      align: "right",
+      color: toColor(deck.theme.colors.ink),
+      margin: 0,
+      fit: "shrink"
+    });
+  });
+}
+
 function renderSlide(slide, deck, spec, pageNumber) {
   if (spec.kind === "cover") {
     addBlueChrome(slide, deck);
@@ -5045,6 +5237,11 @@ function renderSlide(slide, deck, spec, pageNumber) {
 
   if (spec.kind === "gap-analysis-impact") {
     renderGapAnalysisImpactSlide(slide, deck, spec);
+    return;
+  }
+
+  if (spec.kind === "gap-analysis-top-programs") {
+    renderGapAnalysisTopProgramsSlide(slide, deck, spec);
     return;
   }
 
@@ -5697,6 +5894,138 @@ async function renderDeck(deck) {
   return Buffer.isBuffer(output) ? output : Buffer.from(output);
 }
 
+function xmlEscape(value) {
+  return String(value ?? "")
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&apos;");
+}
+
+function excelColumnName(index) {
+  let n = index + 1;
+  let name = "";
+  while (n > 0) {
+    const rem = (n - 1) % 26;
+    name = String.fromCharCode(65 + rem) + name;
+    n = Math.floor((n - 1) / 26);
+  }
+  return name;
+}
+
+function excelCellXml(value, rowIndex, colIndex, styleId = 0) {
+  const ref = `${excelColumnName(colIndex)}${rowIndex + 1}`;
+  const style = styleId ? ` s="${styleId}"` : "";
+  if (typeof value === "number" && Number.isFinite(value)) {
+    return `<c r="${ref}"${style}><v>${value}</v></c>`;
+  }
+  if (value === null || value === undefined || value === "") return `<c r="${ref}"${style}/>`;
+  return `<c r="${ref}" t="inlineStr"${style}><is><t>${xmlEscape(value)}</t></is></c>`;
+}
+
+function excelRowXml(row, rowIndex, styleForCell) {
+  return `<row r="${rowIndex + 1}">${row.map((cell, colIndex) => (
+    excelCellXml(cell, rowIndex, colIndex, styleForCell(rowIndex, colIndex, cell))
+  )).join("")}</row>`;
+}
+
+function buildGapAnalysisWorkbookBuffer(report) {
+  if (!report || !Array.isArray(report.allRows) || !report.allRows.length) return null;
+  const remainingRows = Array.isArray(report.remainingRows) ? report.remainingRows : [];
+  const topCount = Array.isArray(report.topRows) ? report.topRows.length : 0;
+  const client = cleanInlineText(report.client || "Primary Publisher") || "Primary Publisher";
+  const title = cleanInlineText(report.title || `${client} Gap Analysis Report`);
+  const rows = [
+    [`${title} - remaining programs after top ${topCount || 10} shown in PowerPoint`, "", "", "", "", "", ""],
+    ["Program Name", "Program ID", client, "Pub Comm - Specified Sites", "Gap Type", "Recommended Action", "Competitor Signal"],
+    ...remainingRows.map((row) => [
+      row.programName || "-",
+      row.programId || "-",
+      row.primaryStatus || "-",
+      row.registerOpportunityDisplay || row.competitorPubCommDisplay || "-",
+      row.gapType || "-",
+      row.action || "-",
+      row.competitorSignal || "-"
+    ]),
+    [],
+    ["Connection Type", "Description", "", "", "", "", ""],
+    ["Pub Comm:", `Programs where ${client} are earning commission`, "", "", "", "", ""],
+    ["No Connection:", `Programs where ${client} have never before applied`, "", "", "", "", ""],
+    ["Clicks:", `Programs where ${client} are driving clicks on a program but no conversions/commission`, "", "", "", "", ""],
+    ["Accepted:", `Programs where ${client} are accepted but driving no clicks / conversions`, "", "", "", "", ""],
+    ["Denied:", `Programs where ${client} application was denied`, "", "", "", "", ""],
+    ["Ended:", `Programs where ${client} were once accepted but no longer are`, "", "", "", "", ""],
+    ["Hold Accepted:", `Programs where ${client} are accepted but temporarily placed on hold`, "", "", "", "", ""]
+  ];
+  const mergeEndRow = remainingRows.length + 5;
+  const sheetData = rows.map((row, rowIndex) => excelRowXml(row, rowIndex, (r) => {
+    if (r === 0) return 1;
+    if (r === 1 || r === remainingRows.length + 4) return 2;
+    return 0;
+  })).join("");
+  const dimension = `A1:G${rows.length}`;
+  const sheetXml = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">
+  <dimension ref="${dimension}"/>
+  <sheetViews><sheetView workbookViewId="0"><pane ySplit="2" topLeftCell="A3" activePane="bottomLeft" state="frozen"/></sheetView></sheetViews>
+  <cols>
+    <col min="1" max="1" width="44" customWidth="1"/>
+    <col min="2" max="2" width="13" customWidth="1"/>
+    <col min="3" max="3" width="18" customWidth="1"/>
+    <col min="4" max="4" width="22" customWidth="1"/>
+    <col min="5" max="5" width="18" customWidth="1"/>
+    <col min="6" max="6" width="24" customWidth="1"/>
+    <col min="7" max="7" width="26" customWidth="1"/>
+  </cols>
+  <sheetData>${sheetData}</sheetData>
+  <mergeCells count="1"><mergeCell ref="A1:G1"/></mergeCells>
+  <autoFilter ref="A2:G${Math.max(2, remainingRows.length + 2)}"/>
+  <pageMargins left="0.7" right="0.7" top="0.75" bottom="0.75" header="0.3" footer="0.3"/>
+</worksheet>`;
+  const zip = new JSZip();
+  zip.file("[Content_Types].xml", `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">
+  <Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/>
+  <Default Extension="xml" ContentType="application/xml"/>
+  <Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/>
+  <Override PartName="/xl/worksheets/sheet1.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/>
+  <Override PartName="/xl/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.styles+xml"/>
+  <Override PartName="/docProps/core.xml" ContentType="application/vnd.openxmlformats-package.core-properties+xml"/>
+  <Override PartName="/docProps/app.xml" ContentType="application/vnd.openxmlformats-officedocument.extended-properties+xml"/>
+</Types>`);
+  zip.file("_rels/.rels", `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
+  <Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="xl/workbook.xml"/>
+  <Relationship Id="rId2" Type="http://schemas.openxmlformats.org/package/2006/relationships/metadata/core-properties" Target="docProps/core.xml"/>
+  <Relationship Id="rId3" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/extended-properties" Target="docProps/app.xml"/>
+</Relationships>`);
+  zip.file("xl/workbook.xml", `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">
+  <sheets><sheet name="Gap Analysis" sheetId="1" r:id="rId1"/></sheets>
+</workbook>`);
+  zip.file("xl/_rels/workbook.xml.rels", `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
+  <Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet1.xml"/>
+  <Relationship Id="rId2" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles" Target="styles.xml"/>
+</Relationships>`);
+  zip.file("xl/worksheets/sheet1.xml", sheetXml);
+  zip.file("xl/styles.xml", `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<styleSheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">
+  <fonts count="3"><font><sz val="11"/><name val="Aptos"/></font><font><b/><sz val="14"/><color rgb="FF1F2533"/><name val="Aptos Display"/></font><font><b/><sz val="11"/><color rgb="FFFFFFFF"/><name val="Aptos"/></font></fonts>
+  <fills count="3"><fill><patternFill patternType="none"/></fill><fill><patternFill patternType="gray125"/></fill><fill><patternFill patternType="solid"><fgColor rgb="FF2F6FF2"/><bgColor indexed="64"/></patternFill></fill></fills>
+  <borders count="2"><border><left/><right/><top/><bottom/><diagonal/></border><border><left style="thin"><color rgb="FFD9DEE8"/></left><right style="thin"><color rgb="FFD9DEE8"/></right><top style="thin"><color rgb="FFD9DEE8"/></top><bottom style="thin"><color rgb="FFD9DEE8"/></bottom><diagonal/></border></borders>
+  <cellStyleXfs count="1"><xf numFmtId="0" fontId="0" fillId="0" borderId="0"/></cellStyleXfs>
+  <cellXfs count="3"><xf numFmtId="0" fontId="0" fillId="0" borderId="1" xfId="0" applyBorder="1" applyAlignment="1"><alignment vertical="top" wrapText="1"/></xf><xf numFmtId="0" fontId="1" fillId="0" borderId="0" xfId="0" applyFont="1"/><xf numFmtId="0" fontId="2" fillId="2" borderId="1" xfId="0" applyFont="1" applyFill="1" applyBorder="1" applyAlignment="1"><alignment vertical="center" wrapText="1"/></xf></cellXfs>
+  <cellStyles count="1"><cellStyle name="Normal" xfId="0" builtinId="0"/></cellStyles>
+</styleSheet>`);
+  const now = new Date().toISOString();
+  zip.file("docProps/core.xml", `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<cp:coreProperties xmlns:cp="http://schemas.openxmlformats.org/package/2006/metadata/core-properties" xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:dcterms="http://purl.org/dc/terms/" xmlns:dcmitype="http://purl.org/dc/dcmitype/" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"><dc:title>${xmlEscape(title)}</dc:title><dc:creator>QBR PPTX Service</dc:creator><cp:lastModifiedBy>QBR PPTX Service</cp:lastModifiedBy><dcterms:created xsi:type="dcterms:W3CDTF">${now}</dcterms:created><dcterms:modified xsi:type="dcterms:W3CDTF">${now}</dcterms:modified></cp:coreProperties>`);
+  zip.file("docProps/app.xml", `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Properties xmlns="http://schemas.openxmlformats.org/officeDocument/2006/extended-properties" xmlns:vt="http://schemas.openxmlformats.org/officeDocument/2006/docPropsVTypes"><Application>QBR PPTX Service</Application></Properties>`);
+  return zip.generateAsync({ type: "nodebuffer", compression: "DEFLATE" });
+}
+
 function safeName(value) {
   return String(value || "qbr_deck")
     .trim()
@@ -5713,14 +6042,23 @@ async function generatePresentation(payload, options = {}) {
   const localizedDeckSpec = await localizeDeckSpec(deckSpec, normalized.languageCode);
   const buffer = await renderDeck(localizedDeckSpec);
   const fileName = normalized.outputFileName || `${safeName(localizedDeckSpec.metadata.deckTitle)}_${crypto.randomUUID()}.pptx`;
+  const gapReportBuffer = await buildGapAnalysisWorkbookBuffer(localizedDeckSpec.reports?.gapAnalysis);
+  const gapReportFileName = gapReportBuffer
+    ? fileName.replace(/\.pptx$/i, ".gap-analysis.xlsx")
+    : null;
 
-  return { normalized, deckSpec: localizedDeckSpec, buffer, fileName };
+  return { normalized, deckSpec: localizedDeckSpec, buffer, fileName, gapReportBuffer, gapReportFileName };
 }
 
 async function saveOutput(result, outputDir) {
   await fs.mkdir(outputDir, { recursive: true });
   const pptxPath = path.join(outputDir, result.fileName);
   await fs.writeFile(pptxPath, result.buffer);
+  let gapReportPath = null;
+  if (result.gapReportBuffer && result.gapReportFileName) {
+    gapReportPath = path.join(outputDir, result.gapReportFileName);
+    await fs.writeFile(gapReportPath, result.gapReportBuffer);
+  }
 
   let deckSpecFileName = null;
   if (result.normalized.debug) {
@@ -5728,7 +6066,7 @@ async function saveOutput(result, outputDir) {
     await fs.writeFile(path.join(outputDir, deckSpecFileName), JSON.stringify(result.deckSpec, null, 2), "utf8");
   }
 
-  return { pptxPath, deckSpecFileName };
+  return { pptxPath, deckSpecFileName, gapReportPath };
 }
 
 module.exports = {

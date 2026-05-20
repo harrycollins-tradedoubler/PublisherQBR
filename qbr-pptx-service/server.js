@@ -47,7 +47,9 @@ async function serveFile(req, res, pathname) {
     const data = await fs.readFile(fullPath);
     const contentType = fileName.endsWith(".json")
       ? "application/json"
-      : "application/vnd.openxmlformats-officedocument.presentationml.presentation";
+      : fileName.endsWith(".xlsx")
+        ? "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+        : "application/vnd.openxmlformats-officedocument.presentationml.presentation";
     res.writeHead(200, {
       "Content-Type": contentType,
       "Access-Control-Allow-Origin": "*"
@@ -102,6 +104,8 @@ const server = http.createServer(async (req, res) => {
         presentation_id: result.deckSpec.metadata.requestId,
         pptx_url: `${root}/files/${encodeURIComponent(result.fileName)}`,
         deck_spec_url: saved.deckSpecFileName ? `${root}/files/${encodeURIComponent(saved.deckSpecFileName)}` : null,
+        gap_analysis_report_url: result.gapReportFileName ? `${root}/files/${encodeURIComponent(result.gapReportFileName)}` : null,
+        gap_analysis_report_file_name: result.gapReportFileName || null,
         file_name: result.fileName,
         slide_count: result.deckSpec.slides.length,
         theme: result.deckSpec.theme.name
