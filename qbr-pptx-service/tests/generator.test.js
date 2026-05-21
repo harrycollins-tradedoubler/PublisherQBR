@@ -1398,6 +1398,10 @@ async function gapAnalysisSectionUsesTopTenSlideAndExcelReportForAllPrograms() {
   assert.match(registerXml, /£3,500/);
   assert.match(reportSheetXml, /Pub Comm - Specified Sites/);
   assert.doesNotMatch(reportSheetXml, /Pub Comm - All Sites/);
+  assert(
+    reportSheetXml.indexOf("<autoFilter") < reportSheetXml.indexOf("<mergeCells"),
+    "Excel worksheet XML must place autoFilter before mergeCells"
+  );
   assert.match(reportSheetXml, /Connection Type/);
   assert.match(reportSheetXml, /Programs where TopCashBack are accepted but driving no clicks \/ conversions/);
   assert.match(registerPage2Xml, /Gap Program 80/);

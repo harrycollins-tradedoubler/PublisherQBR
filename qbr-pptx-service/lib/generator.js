@@ -5979,8 +5979,8 @@ function buildGapAnalysisWorkbookBuffer(report) {
     <col min="7" max="7" width="26" customWidth="1"/>
   </cols>
   <sheetData>${sheetData}</sheetData>
-  <mergeCells count="1"><mergeCell ref="A1:G1"/></mergeCells>
   <autoFilter ref="A2:G${Math.max(2, reportRows.length + 2)}"/>
+  <mergeCells count="1"><mergeCell ref="A1:G1"/></mergeCells>
   <pageMargins left="0.7" right="0.7" top="0.75" bottom="0.75" header="0.3" footer="0.3"/>
 </worksheet>`;
   const zip = new JSZip();
