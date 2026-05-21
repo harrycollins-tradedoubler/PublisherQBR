@@ -1312,7 +1312,7 @@ async function gapAnalysisImpactSlideUsesAssetUnderlayAndOmitsBottomBreakdown() 
   assert.doesNotMatch(slideXml, /<a:t>Recovery<\/a:t>/);
 }
 
-async function gapAnalysisSectionUsesTopTenSlideAndExcelReportForRemainder() {
+async function gapAnalysisSectionUsesTopTenSlideAndExcelReportForAllPrograms() {
   const gapRows = Array.from({ length: 80 }, (_, index) => {
     const status = index % 4 === 0
       ? "Accepted"
@@ -1384,7 +1384,7 @@ async function gapAnalysisSectionUsesTopTenSlideAndExcelReportForRemainder() {
   assert.equal(topProgramsSlide.kind, "gap-analysis-top-programs");
   assert.equal(topProgramsSlide.gapTopPrograms.rows.length, 10);
   assert.equal(topProgramsSlide.gapTopPrograms.totalRows, 80);
-  assert.equal(topProgramsSlide.gapTopPrograms.reportRows, 70);
+  assert.equal(topProgramsSlide.gapTopPrograms.reportRows, 80);
   assert.equal(result.gapReportFileName.endsWith(".gap-analysis.xlsx"), true);
   assert(result.gapReportBuffer.length > 1000);
   assert.equal(ids.includes("gap-analysis-priority-programs"), false);
@@ -1402,7 +1402,7 @@ async function gapAnalysisSectionUsesTopTenSlideAndExcelReportForRemainder() {
   assert.match(reportSheetXml, /Programs where TopCashBack are accepted but driving no clicks \/ conversions/);
   assert.match(registerPage2Xml, /Gap Program 80/);
   assert.doesNotMatch(registerXml, /Gap Program 80/);
-  assert.doesNotMatch(reportSheetXml, /Philips Hue UK - AFF/);
+  assert.match(reportSheetXml, /Philips Hue UK - AFF/);
   assert.doesNotMatch(registerXml, /Priority programs to close the gap/);
 }
 
@@ -1765,7 +1765,7 @@ async function run() {
     renderedCompetitorWeeklyChartUsesNativeContinuousLineChart,
     topNewProgramsMovesImmediatelyAfterMoversAndCompetitorShareFollowsAnalysis,
     gapAnalysisImpactSlideUsesAssetUnderlayAndOmitsBottomBreakdown,
-    gapAnalysisSectionUsesTopTenSlideAndExcelReportForRemainder,
+    gapAnalysisSectionUsesTopTenSlideAndExcelReportForAllPrograms,
     programConnectionStatusSlideFollowsTopNewProgramsAndRendersKey,
     programConnectionStatusPaginatesLargeProgramLists,
     renderedCompetitorShareChartUsesThemeBarsAndLabels,

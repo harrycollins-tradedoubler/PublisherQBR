@@ -3275,7 +3275,7 @@ function buildDeckSpec(input, theme) {
         gapTopPrograms: {
           rows: programGapAnalysisTopPrograms,
           totalRows: programGapAnalysis.rows.length,
-          reportRows: programGapAnalysisReportRows.length
+          reportRows: programGapAnalysis.rows.length
         }
       });
     }
@@ -5932,14 +5932,14 @@ function excelRowXml(row, rowIndex, styleForCell) {
 
 function buildGapAnalysisWorkbookBuffer(report) {
   if (!report || !Array.isArray(report.allRows) || !report.allRows.length) return null;
-  const remainingRows = Array.isArray(report.remainingRows) ? report.remainingRows : [];
+  const reportRows = report.allRows;
   const topCount = Array.isArray(report.topRows) ? report.topRows.length : 0;
   const client = cleanInlineText(report.client || "Primary Publisher") || "Primary Publisher";
   const title = cleanInlineText(report.title || `${client} Gap Analysis Report`);
   const rows = [
-    [`${title} - remaining programs after top ${topCount || 10} shown in PowerPoint`, "", "", "", "", "", ""],
+    [`${title} - all gap programs; top ${topCount || 10} are summarised in PowerPoint`, "", "", "", "", "", ""],
     ["Program Name", "Program ID", client, "Pub Comm - Specified Sites", "Gap Type", "Recommended Action", "Competitor Signal"],
-    ...remainingRows.map((row) => [
+    ...reportRows.map((row) => [
       row.programName || "-",
       row.programId || "-",
       row.primaryStatus || "-",
@@ -5958,10 +5958,10 @@ function buildGapAnalysisWorkbookBuffer(report) {
     ["Ended:", `Programs where ${client} were once accepted but no longer are`, "", "", "", "", ""],
     ["Hold Accepted:", `Programs where ${client} are accepted but temporarily placed on hold`, "", "", "", "", ""]
   ];
-  const mergeEndRow = remainingRows.length + 5;
+  const mergeEndRow = reportRows.length + 5;
   const sheetData = rows.map((row, rowIndex) => excelRowXml(row, rowIndex, (r) => {
     if (r === 0) return 1;
-    if (r === 1 || r === remainingRows.length + 4) return 2;
+    if (r === 1 || r === reportRows.length + 4) return 2;
     return 0;
   })).join("");
   const dimension = `A1:G${rows.length}`;
@@ -5980,7 +5980,7 @@ function buildGapAnalysisWorkbookBuffer(report) {
   </cols>
   <sheetData>${sheetData}</sheetData>
   <mergeCells count="1"><mergeCell ref="A1:G1"/></mergeCells>
-  <autoFilter ref="A2:G${Math.max(2, remainingRows.length + 2)}"/>
+  <autoFilter ref="A2:G${Math.max(2, reportRows.length + 2)}"/>
   <pageMargins left="0.7" right="0.7" top="0.75" bottom="0.75" header="0.3" footer="0.3"/>
 </worksheet>`;
   const zip = new JSZip();
