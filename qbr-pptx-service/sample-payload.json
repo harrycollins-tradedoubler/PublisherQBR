@@ -162,6 +162,23 @@
         "OV YoY %": "+7.2%",
         "Publishers": "23"
       }
+    ],
+    "programConnectionStatusTable": [
+      {
+        "Program ID": "392254",
+        "Program Name": "Everpress",
+        "Connection Status": "Accepted"
+      },
+      {
+        "Program ID": "392637",
+        "Program Name": "Atlanta Braves",
+        "Connection Status": "Not Connected"
+      },
+      {
+        "Program ID": "392847",
+        "Program Name": "Bosch DIY UK",
+        "Connection Status": "Hold UC"
+      }
     ]
   },
   "recommendations": [],

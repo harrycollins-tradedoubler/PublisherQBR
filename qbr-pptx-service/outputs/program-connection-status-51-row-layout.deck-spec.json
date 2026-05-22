@@ -1,0 +1,1094 @@
+{
+  "metadata": {
+    "requestId": "qbr-1779204145981",
+    "client": "topcashback",
+    "deckTitle": "QBR - topcashback",
+    "reportingPeriod": "2026-02-19 to 2026-03-31",
+    "comparisonPeriod": "2025-02-19 to 2025-03-31",
+    "languageCode": "EN",
+    "languageName": "English",
+    "locale": "en-GB",
+    "uiLabels": {
+      "qbrReport": "QBR Report",
+      "anyQuestions": "Any Questions?",
+      "thankYouSubtitleTemplate": "TD Publisher Performance Review - {period}",
+      "currentPeriod": "Current Period",
+      "comparisonPeriodYoy": "Comparison Period (YoY)",
+      "basisYoy": "Basis: Year-over-Year (YoY)",
+      "publisherActivityBySegment": "Publisher Activity by Segment",
+      "keyObservations": "Key Observations",
+      "reportingPeriodPrefix": "Reporting Period",
+      "dataAsOfPrefix": "Data as of",
+      "comparisonPeriodPrefix": "Comparison Period",
+      "allFiguresStatement": "All figures are reported in {currency} unless otherwise stated. YoY variance is calculated as Current Period vs Comparison Period.",
+      "analysisTagSuffix": "Analysis",
+      "segmentSignalUnavailable": "Segment signal not available.",
+      "detailedMovementUnavailable": "Detailed movement not available from this extract.",
+      "kpiSignalGeneric": "KPI Signal",
+      "kpiDriverUnavailable": "Driver not confirmed from available KPI data.",
+      "kpiDetailUnavailable": "Detail not available from current extract.",
+      "kpiTitleConversionRateImprovement": "Conversion Rate Improvement",
+      "kpiTitleSalesVolumePressure": "Sales Volume Pressure",
+      "kpiTitleAovGrowthOffset": "AOV Growth Partially Offsetting Volume Decline",
+      "kpiTitleRisingCpa": "Rising CPA",
+      "kpiTitleRoiTrend": "ROI Trend"
+    },
+    "currencyCode": "GBP",
+    "qbrFocus": "General performance review",
+    "analysisProgramIds": [],
+    "generatedAt": "2026-05-19T15:22:25.991Z"
+  },
+  "theme": {
+    "id": "td-default",
+    "name": "TD",
+    "companyName": "Tradedoubler",
+    "logoText": "Tradedoubler",
+    "fonts": {
+      "heading": "Aptos",
+      "body": "Aptos",
+      "mono": "Aptos"
+    },
+    "colors": {
+      "ink": "#2F333B",
+      "paper": "#F3F4F6",
+      "canvas": "#E8EDF9",
+      "accent": "#2F6FF2",
+      "accentAlt": "#EB5757",
+      "success": "#57A66C",
+      "warning": "#F2C94C",
+      "highlight": "#AFC4F5",
+      "muted": "#5B6372",
+      "border": "#D8DCE5"
+    }
+  },
+  "slides": [
+    {
+      "id": "cover",
+      "kind": "cover",
+      "title": "Topcashback Performance Review",
+      "subtitle": "",
+      "headline": "Conversions and earnings both improved year on year",
+      "summary": "A focused year-over-year review of topcashback publisher performance, conversion dynamics, earnings and strategic priorities to drive growth and optimise outcomes.",
+      "bullets": [
+        "Client: topcashback",
+        "Reporting currency: GBP",
+        "Language: English"
+      ],
+      "kpis": [],
+      "tables": []
+    },
+    {
+      "id": "reporting-period",
+      "kind": "reporting-period",
+      "title": "Reporting Period",
+      "subtitle": "",
+      "headline": "",
+      "summary": "",
+      "bullets": [
+        "2026-02-19 to 2026-03-31"
+      ],
+      "kpis": [],
+      "tables": [],
+      "callout": ""
+    },
+    {
+      "id": "executive-summary",
+      "kind": "program-executive-summary",
+      "title": "Program Performance: Executive Summary",
+      "headline": "",
+      "summary": "Across all programs connected to topcashback, performance was mixed in Feb 2026 – Mar 2026. Conversions moved +25.0% to 125 and conversion rate moved +25.0% to 5.0%. Publisher commission increased +7.1% to GBP 750, while digital wallet earnings increased +150.0% to GBP 250. Total earnings ended at GBP 1,000 (+25.0%) and total order value increased +25.0% to GBP 12,500.",
+      "bullets": [],
+      "kpis": [
+        {
+          "label": "Conversions",
+          "value": "125",
+          "previous": "100",
+          "summary": "125 vs 100 PY +25.0%",
+          "delta": "+25.0%",
+          "trend": "up",
+          "icon": "☰",
+          "iconPath": ""
+        },
+        {
+          "label": "Total Order Value",
+          "value": "GBP 12,500",
+          "previous": "GBP 10,000",
+          "summary": "GBP 12,500 vs GBP 10,000 PY +25.0%",
+          "delta": "+25.0%",
+          "trend": "up",
+          "icon": "▤",
+          "iconPath": ""
+        },
+        {
+          "label": "Publisher Commission",
+          "value": "GBP 750",
+          "previous": "GBP 700",
+          "summary": "GBP 750 vs GBP 700 PY +7.1%",
+          "delta": "+7.1%",
+          "trend": "up",
+          "icon": "£",
+          "iconPath": ""
+        },
+        {
+          "label": "Digital Wallet",
+          "value": "GBP 250",
+          "previous": "GBP 100",
+          "summary": "GBP 250 vs GBP 100 PY +150.0%",
+          "delta": "+150.0%",
+          "trend": "up",
+          "icon": "£",
+          "iconPath": ""
+        },
+        {
+          "label": "Total Earnings",
+          "value": "GBP 1,000",
+          "previous": "GBP 800",
+          "summary": "GBP 1,000 vs GBP 800 PY +25.0%",
+          "delta": "+25.0%",
+          "trend": "up",
+          "icon": "£",
+          "iconPath": ""
+        },
+        {
+          "label": "Conversion Rate",
+          "value": "5.0%",
+          "previous": "4.0%",
+          "summary": "5.0% vs 4.0% PY +25.0%",
+          "delta": "+25.0%",
+          "trend": "up",
+          "icon": "⚡",
+          "iconPath": ""
+        }
+      ],
+      "tables": []
+    },
+    {
+      "id": "kpi-volume-conversion",
+      "kind": "kpi-table",
+      "title": "KPI Summary Table: Conversions & Earnings",
+      "subtitle": "Unified KPI breakdown vs prior year.",
+      "bullets": [],
+      "kpis": [],
+      "tables": [
+        {
+          "title": "KPI Summary",
+          "columns": [
+            "Metric",
+            "Recent",
+            "Previous",
+            "Difference",
+            "% Variance"
+          ],
+          "rows": [
+            [
+              "Conversions",
+              "125",
+              "100",
+              "25",
+              "+25.0%"
+            ],
+            [
+              "Conversion Rate",
+              "5.0%",
+              "4.0%",
+              "1.0%",
+              "+25.0%"
+            ],
+            [
+              "Clicks",
+              "2,500",
+              "2,000",
+              "500",
+              "+25.0%"
+            ],
+            [
+              "Earnings per Click",
+              "GBP 0.40",
+              "GBP 0.40",
+              "GBP 0.00",
+              "0.0%"
+            ],
+            [
+              "Earnings per Conversion",
+              "£6.00",
+              "£7.00",
+              "-£1.00",
+              "-14.3%"
+            ],
+            [
+              "Total Order Value",
+              "GBP 12,500",
+              "GBP 10,000",
+              "GBP 2,500",
+              "+25.0%"
+            ],
+            [
+              "Publisher Commission",
+              "GBP 750",
+              "GBP 700",
+              "GBP 50",
+              "+7.1%"
+            ],
+            [
+              "Digital Wallet",
+              "GBP 250",
+              "GBP 100",
+              "GBP 150",
+              "+150.0%"
+            ],
+            [
+              "Total Earnings",
+              "GBP 1,000",
+              "GBP 800",
+              "GBP 200",
+              "+25.0%"
+            ],
+            [
+              "Active Programs",
+              "4",
+              "4",
+              "0",
+              "0.0%"
+            ]
+          ],
+          "colAlign": [
+            "left",
+            "center",
+            "center",
+            "center",
+            "center"
+          ],
+          "dense": false
+        }
+      ],
+      "footerNote": "Total earnings = Publisher Commission + Digital Wallet. Conversion rate uses the source API's conversion-rate basis."
+    },
+    {
+      "id": "program-activation-snapshot",
+      "kind": "program-activation-snapshot",
+      "title": "Program Activation Snapshot",
+      "subtitle": "",
+      "bullets": [],
+      "kpis": [],
+      "tables": [],
+      "activationSnapshot": [
+        {
+          "label": "Joined programs",
+          "total": "-",
+          "newCount": "-",
+          "newPercent": "-"
+        },
+        {
+          "label": "With clicks",
+          "total": "-",
+          "newCount": "-",
+          "newPercent": "-"
+        },
+        {
+          "label": "Pub commission",
+          "total": "-",
+          "newCount": "-",
+          "newPercent": "-"
+        },
+        {
+          "label": "Inactive",
+          "total": "-",
+          "newCount": "-",
+          "newPercent": "-"
+        }
+      ],
+      "summary": "A clean status view for newly joined primary-publisher programs, placed directly after the KPI summary."
+    },
+    {
+      "id": "kpi-cost-roi",
+      "kind": "program-breakdown",
+      "title": "Program-Level Analysis: Publisher Commission",
+      "subtitle": "Per-program view ordered by publisher commission.",
+      "bullets": [],
+      "kpis": [],
+      "tables": [
+        {
+          "title": "Program-Level Breakdown",
+          "columns": [
+            "Program ID",
+            "Program Name",
+            "Publisher Commission",
+            "Digital Wallet",
+            "Total Earnings",
+            "Conversions",
+            "Order Value",
+            "Publisher Commission YoY %",
+            "Earnings YoY %",
+            "Conversions YoY %"
+          ],
+          "rows": [
+            [
+              "-",
+              "-",
+              "-",
+              "-",
+              "-",
+              "-",
+              "-",
+              "-",
+              "-",
+              "-"
+            ]
+          ],
+          "dense": false
+        }
+      ]
+    },
+    {
+      "id": "movers-shakers-publisher-commission",
+      "kind": "movers-bar-chart",
+      "title": "Movers & Shakers: Publisher Commission",
+      "subtitle": "Top 10 positive and top 10 negative period-on-period publisher commission changes.",
+      "bullets": [],
+      "kpis": [],
+      "tables": [],
+      "chart": {
+        "type": "movers-commission-bar",
+        "title": "Partners with most change in publisher commission period-on-period",
+        "rows": [
+          {
+            "label": "No qualifying program movement",
+            "value": 0,
+            "display": "-",
+            "pct": "",
+            "direction": "flat"
+          }
+        ]
+      }
+    },
+    {
+      "id": "brand-new-publishers",
+      "kind": "publisher-table",
+      "title": "Top 10 New Programs",
+      "subtitle": "Programs joined or first active for the primary publisher in the current period.",
+      "bullets": [],
+      "kpis": [],
+      "tables": [
+        {
+          "title": "Top 10 New Programs",
+          "columns": [
+            "Program ID",
+            "Program Name",
+            "Conversions",
+            "Order Value",
+            "Publisher Commission",
+            "Digital Wallet",
+            "Total Earnings"
+          ],
+          "rows": [
+            [
+              "392254",
+              "Everpress",
+              "1",
+              "GBP 100",
+              "GBP 10",
+              "GBP 0",
+              "GBP 10"
+            ]
+          ],
+          "dense": false
+        }
+      ],
+      "callout": "New programs are included where current-period activity exists and no prior-period baseline was found."
+    },
+    {
+      "id": "program-connection-status",
+      "kind": "program-connection-status",
+      "title": "Program Connection Status",
+      "subtitle": "",
+      "bullets": [],
+      "kpis": [],
+      "tables": [],
+      "programConnectionStatus": {
+        "title": "Program Connection Status",
+        "rows": [
+          {
+            "programId": "402000",
+            "programName": "Long Programme Name Example 1",
+            "statusId": "0",
+            "status": "Not Connected",
+            "shortStatus": "Not Conn.",
+            "color": "#8A94A6",
+            "createdDate": ""
+          },
+          {
+            "programId": "402001",
+            "programName": "Program 2",
+            "statusId": "3",
+            "status": "Accepted",
+            "shortStatus": "Accepted",
+            "color": "#57A66C",
+            "createdDate": ""
+          },
+          {
+            "programId": "402002",
+            "programName": "Program 3",
+            "statusId": "3",
+            "status": "Accepted",
+            "shortStatus": "Accepted",
+            "color": "#57A66C",
+            "createdDate": ""
+          },
+          {
+            "programId": "402003",
+            "programName": "Program 4",
+            "statusId": "0",
+            "status": "Not Connected",
+            "shortStatus": "Not Conn.",
+            "color": "#8A94A6",
+            "createdDate": ""
+          },
+          {
+            "programId": "402004",
+            "programName": "Program 5",
+            "statusId": "3",
+            "status": "Accepted",
+            "shortStatus": "Accepted",
+            "color": "#57A66C",
+            "createdDate": ""
+          },
+          {
+            "programId": "402005",
+            "programName": "Long Programme Name Example 6",
+            "statusId": "3",
+            "status": "Accepted",
+            "shortStatus": "Accepted",
+            "color": "#57A66C",
+            "createdDate": ""
+          },
+          {
+            "programId": "402006",
+            "programName": "Program 7",
+            "statusId": "0",
+            "status": "Not Connected",
+            "shortStatus": "Not Conn.",
+            "color": "#8A94A6",
+            "createdDate": ""
+          },
+          {
+            "programId": "402007",
+            "programName": "Program 8",
+            "statusId": "3",
+            "status": "Accepted",
+            "shortStatus": "Accepted",
+            "color": "#57A66C",
+            "createdDate": ""
+          },
+          {
+            "programId": "402008",
+            "programName": "Program 9",
+            "statusId": "3",
+            "status": "Accepted",
+            "shortStatus": "Accepted",
+            "color": "#57A66C",
+            "createdDate": ""
+          },
+          {
+            "programId": "402009",
+            "programName": "Program 10",
+            "statusId": "0",
+            "status": "Not Connected",
+            "shortStatus": "Not Conn.",
+            "color": "#8A94A6",
+            "createdDate": ""
+          },
+          {
+            "programId": "402010",
+            "programName": "Long Programme Name Example 11",
+            "statusId": "3",
+            "status": "Accepted",
+            "shortStatus": "Accepted",
+            "color": "#57A66C",
+            "createdDate": ""
+          },
+          {
+            "programId": "402011",
+            "programName": "Program 12",
+            "statusId": "3",
+            "status": "Accepted",
+            "shortStatus": "Accepted",
+            "color": "#57A66C",
+            "createdDate": ""
+          },
+          {
+            "programId": "402012",
+            "programName": "Program 13",
+            "statusId": "0",
+            "status": "Not Connected",
+            "shortStatus": "Not Conn.",
+            "color": "#8A94A6",
+            "createdDate": ""
+          },
+          {
+            "programId": "402013",
+            "programName": "Program 14",
+            "statusId": "3",
+            "status": "Accepted",
+            "shortStatus": "Accepted",
+            "color": "#57A66C",
+            "createdDate": ""
+          },
+          {
+            "programId": "402014",
+            "programName": "Program 15",
+            "statusId": "3",
+            "status": "Accepted",
+            "shortStatus": "Accepted",
+            "color": "#57A66C",
+            "createdDate": ""
+          },
+          {
+            "programId": "402015",
+            "programName": "Long Programme Name Example 16",
+            "statusId": "0",
+            "status": "Not Connected",
+            "shortStatus": "Not Conn.",
+            "color": "#8A94A6",
+            "createdDate": ""
+          },
+          {
+            "programId": "402016",
+            "programName": "Program 17",
+            "statusId": "3",
+            "status": "Accepted",
+            "shortStatus": "Accepted",
+            "color": "#57A66C",
+            "createdDate": ""
+          },
+          {
+            "programId": "402017",
+            "programName": "Program 18",
+            "statusId": "3",
+            "status": "Accepted",
+            "shortStatus": "Accepted",
+            "color": "#57A66C",
+            "createdDate": ""
+          },
+          {
+            "programId": "402018",
+            "programName": "Program 19",
+            "statusId": "0",
+            "status": "Not Connected",
+            "shortStatus": "Not Conn.",
+            "color": "#8A94A6",
+            "createdDate": ""
+          },
+          {
+            "programId": "402019",
+            "programName": "Program 20",
+            "statusId": "3",
+            "status": "Accepted",
+            "shortStatus": "Accepted",
+            "color": "#57A66C",
+            "createdDate": ""
+          },
+          {
+            "programId": "402020",
+            "programName": "Long Programme Name Example 21",
+            "statusId": "3",
+            "status": "Accepted",
+            "shortStatus": "Accepted",
+            "color": "#57A66C",
+            "createdDate": ""
+          },
+          {
+            "programId": "402021",
+            "programName": "Program 22",
+            "statusId": "0",
+            "status": "Not Connected",
+            "shortStatus": "Not Conn.",
+            "color": "#8A94A6",
+            "createdDate": ""
+          },
+          {
+            "programId": "402022",
+            "programName": "Program 23",
+            "statusId": "3",
+            "status": "Accepted",
+            "shortStatus": "Accepted",
+            "color": "#57A66C",
+            "createdDate": ""
+          },
+          {
+            "programId": "402023",
+            "programName": "Program 24",
+            "statusId": "3",
+            "status": "Accepted",
+            "shortStatus": "Accepted",
+            "color": "#57A66C",
+            "createdDate": ""
+          },
+          {
+            "programId": "402024",
+            "programName": "Program 25",
+            "statusId": "0",
+            "status": "Not Connected",
+            "shortStatus": "Not Conn.",
+            "color": "#8A94A6",
+            "createdDate": ""
+          },
+          {
+            "programId": "402025",
+            "programName": "Long Programme Name Example 26",
+            "statusId": "3",
+            "status": "Accepted",
+            "shortStatus": "Accepted",
+            "color": "#57A66C",
+            "createdDate": ""
+          },
+          {
+            "programId": "402026",
+            "programName": "Program 27",
+            "statusId": "3",
+            "status": "Accepted",
+            "shortStatus": "Accepted",
+            "color": "#57A66C",
+            "createdDate": ""
+          },
+          {
+            "programId": "402027",
+            "programName": "Program 28",
+            "statusId": "0",
+            "status": "Not Connected",
+            "shortStatus": "Not Conn.",
+            "color": "#8A94A6",
+            "createdDate": ""
+          },
+          {
+            "programId": "402028",
+            "programName": "Program 29",
+            "statusId": "3",
+            "status": "Accepted",
+            "shortStatus": "Accepted",
+            "color": "#57A66C",
+            "createdDate": ""
+          },
+          {
+            "programId": "402029",
+            "programName": "Program 30",
+            "statusId": "3",
+            "status": "Accepted",
+            "shortStatus": "Accepted",
+            "color": "#57A66C",
+            "createdDate": ""
+          },
+          {
+            "programId": "402030",
+            "programName": "Long Programme Name Example 31",
+            "statusId": "0",
+            "status": "Not Connected",
+            "shortStatus": "Not Conn.",
+            "color": "#8A94A6",
+            "createdDate": ""
+          },
+          {
+            "programId": "402031",
+            "programName": "Program 32",
+            "statusId": "3",
+            "status": "Accepted",
+            "shortStatus": "Accepted",
+            "color": "#57A66C",
+            "createdDate": ""
+          },
+          {
+            "programId": "402032",
+            "programName": "Program 33",
+            "statusId": "3",
+            "status": "Accepted",
+            "shortStatus": "Accepted",
+            "color": "#57A66C",
+            "createdDate": ""
+          },
+          {
+            "programId": "402033",
+            "programName": "Program 34",
+            "statusId": "0",
+            "status": "Not Connected",
+            "shortStatus": "Not Conn.",
+            "color": "#8A94A6",
+            "createdDate": ""
+          },
+          {
+            "programId": "402034",
+            "programName": "Program 35",
+            "statusId": "3",
+            "status": "Accepted",
+            "shortStatus": "Accepted",
+            "color": "#57A66C",
+            "createdDate": ""
+          },
+          {
+            "programId": "402035",
+            "programName": "Long Programme Name Example 36",
+            "statusId": "3",
+            "status": "Accepted",
+            "shortStatus": "Accepted",
+            "color": "#57A66C",
+            "createdDate": ""
+          },
+          {
+            "programId": "402036",
+            "programName": "Program 37",
+            "statusId": "0",
+            "status": "Not Connected",
+            "shortStatus": "Not Conn.",
+            "color": "#8A94A6",
+            "createdDate": ""
+          },
+          {
+            "programId": "402037",
+            "programName": "Program 38",
+            "statusId": "3",
+            "status": "Accepted",
+            "shortStatus": "Accepted",
+            "color": "#57A66C",
+            "createdDate": ""
+          },
+          {
+            "programId": "402038",
+            "programName": "Program 39",
+            "statusId": "3",
+            "status": "Accepted",
+            "shortStatus": "Accepted",
+            "color": "#57A66C",
+            "createdDate": ""
+          },
+          {
+            "programId": "402039",
+            "programName": "Program 40",
+            "statusId": "0",
+            "status": "Not Connected",
+            "shortStatus": "Not Conn.",
+            "color": "#8A94A6",
+            "createdDate": ""
+          },
+          {
+            "programId": "402040",
+            "programName": "Long Programme Name Example 41",
+            "statusId": "3",
+            "status": "Accepted",
+            "shortStatus": "Accepted",
+            "color": "#57A66C",
+            "createdDate": ""
+          },
+          {
+            "programId": "402041",
+            "programName": "Program 42",
+            "statusId": "3",
+            "status": "Accepted",
+            "shortStatus": "Accepted",
+            "color": "#57A66C",
+            "createdDate": ""
+          },
+          {
+            "programId": "402042",
+            "programName": "Program 43",
+            "statusId": "0",
+            "status": "Not Connected",
+            "shortStatus": "Not Conn.",
+            "color": "#8A94A6",
+            "createdDate": ""
+          },
+          {
+            "programId": "402043",
+            "programName": "Program 44",
+            "statusId": "3",
+            "status": "Accepted",
+            "shortStatus": "Accepted",
+            "color": "#57A66C",
+            "createdDate": ""
+          },
+          {
+            "programId": "402044",
+            "programName": "Program 45",
+            "statusId": "3",
+            "status": "Accepted",
+            "shortStatus": "Accepted",
+            "color": "#57A66C",
+            "createdDate": ""
+          },
+          {
+            "programId": "402045",
+            "programName": "Long Programme Name Example 46",
+            "statusId": "0",
+            "status": "Not Connected",
+            "shortStatus": "Not Conn.",
+            "color": "#8A94A6",
+            "createdDate": ""
+          },
+          {
+            "programId": "402046",
+            "programName": "Program 47",
+            "statusId": "3",
+            "status": "Accepted",
+            "shortStatus": "Accepted",
+            "color": "#57A66C",
+            "createdDate": ""
+          },
+          {
+            "programId": "402047",
+            "programName": "Program 48",
+            "statusId": "3",
+            "status": "Accepted",
+            "shortStatus": "Accepted",
+            "color": "#57A66C",
+            "createdDate": ""
+          },
+          {
+            "programId": "402048",
+            "programName": "Program 49",
+            "statusId": "0",
+            "status": "Not Connected",
+            "shortStatus": "Not Conn.",
+            "color": "#8A94A6",
+            "createdDate": ""
+          },
+          {
+            "programId": "402049",
+            "programName": "Program 50",
+            "statusId": "3",
+            "status": "Accepted",
+            "shortStatus": "Accepted",
+            "color": "#57A66C",
+            "createdDate": ""
+          },
+          {
+            "programId": "402050",
+            "programName": "Long Programme Name Example 51",
+            "statusId": "3",
+            "status": "Accepted",
+            "shortStatus": "Accepted",
+            "color": "#57A66C",
+            "createdDate": ""
+          }
+        ],
+        "counts": {
+          "Not Connected": 17,
+          "Accepted": 34
+        },
+        "key": [
+          {
+            "id": 0,
+            "label": "Not Connected",
+            "shortLabel": "Not Conn.",
+            "color": "#8A94A6"
+          },
+          {
+            "id": 1,
+            "label": "Under consideration",
+            "shortLabel": "Under Cons.",
+            "color": "#AFC4F5"
+          },
+          {
+            "id": 2,
+            "label": "Hold UC",
+            "shortLabel": "Hold UC",
+            "color": "#F2C94C"
+          },
+          {
+            "id": 3,
+            "label": "Accepted",
+            "shortLabel": "Accepted",
+            "color": "#57A66C"
+          },
+          {
+            "id": 4,
+            "label": "Ended",
+            "shortLabel": "Ended",
+            "color": "#5B6372"
+          },
+          {
+            "id": 5,
+            "label": "Denied",
+            "shortLabel": "Denied",
+            "color": "#EB5757"
+          },
+          {
+            "id": 6,
+            "label": "Hold Accepted",
+            "shortLabel": "Hold Acc.",
+            "color": "#F2994A"
+          },
+          {
+            "id": 9,
+            "label": "Ending",
+            "shortLabel": "Ending",
+            "color": "#9B51E0"
+          }
+        ],
+        "totalRows": 51,
+        "pageIndex": 0,
+        "pageCount": 1,
+        "cutoffDate": "2025-11-19"
+      }
+    },
+    {
+      "id": "competitor-analysis",
+      "kind": "competitor-analysis",
+      "title": "Competitor Analysis",
+      "subtitle": "Anonymous comparison of publisher commission coverage and white-space programmes.",
+      "bullets": [],
+      "kpis": [],
+      "tables": [
+        {
+          "title": "Competitor Group Summary",
+          "columns": [
+            "Competitor Group Summary",
+            "Your Site",
+            "Publisher 1",
+            "Publisher 2",
+            "Publisher 3",
+            "Publisher 4",
+            "Distinct comp. prog. #"
+          ],
+          "rows": [
+            [
+              "-",
+              "-",
+              "-",
+              "-",
+              "-",
+              "-",
+              "-"
+            ]
+          ]
+        }
+      ],
+      "chart": null,
+      "callout": "Pub Comm of the above is calculated only for programmes where the primary publisher has 0 publisher commission."
+    },
+    {
+      "id": "competitor-share-pub-comm",
+      "kind": "competitor-share-bar-chart",
+      "title": "Share Within Competitor Group",
+      "subtitle": "Publisher commission share for the primary publisher and four comparison publishers.",
+      "bullets": [],
+      "kpis": [],
+      "tables": [],
+      "chart": {
+        "type": "competitor-share-pub-comm",
+        "title": "Share of publisher commission within competitor group",
+        "categories": [
+          "Your Site",
+          "Comp. A",
+          "Comp. B",
+          "Comp. C",
+          "Comp. D"
+        ],
+        "series": []
+      }
+    },
+    {
+      "id": "top-programs-competitor-performance",
+      "kind": "competitor-performance-table",
+      "title": "Top Programs Competitor Performance",
+      "subtitle": "Share of publisher commission by program across the primary publisher and four comparison publishers.",
+      "bullets": [],
+      "kpis": [],
+      "tables": [
+        {
+          "title": "Top Programs Competitor Performance",
+          "columns": [
+            "Program Name",
+            "Primary Publisher",
+            "Comp. A",
+            "Comp. B",
+            "Comp. C",
+            "Comp. D"
+          ],
+          "rows": [
+            [
+              "-",
+              "-",
+              "-",
+              "-",
+              "-",
+              "-"
+            ]
+          ],
+          "colAlign": [
+            "left",
+            "center",
+            "center",
+            "center",
+            "center",
+            "center"
+          ],
+          "colW": [
+            3.9,
+            1.65,
+            1.35,
+            1.35,
+            1.35,
+            1.35
+          ],
+          "primaryHighlightColumn": 1,
+          "dense": true
+        }
+      ]
+    },
+    {
+      "id": "kpi-highlights",
+      "kind": "insights-blue",
+      "title": "KPI Highlights & Business Implications",
+      "subtitle": "What the numbers mean for the business - key signals and context.",
+      "bullets": [
+        "Conversion Rate Movement: Conversion rate increased +25.0% (4.0% to 5.0%). Conversions increased +25.0% (25), showing how efficiently programs converted traffic into outcomes.",
+        "Conversion Volume: Total conversions increased +25.0% (25). Largest declining program contribution requires confirmation from mover tables.",
+        "Order Value: Total order value increased +25.0% (GBP 10,000 to GBP 12,500). Value generation moved alongside conversion volume and earnings performance.",
+        "Publisher Commission: Publisher commission increased +7.1% (GBP 700 to GBP 750). Commission remains the core earning component for the program.",
+        "Total Earnings: Total earnings increased +25.0% (GBP 800 to GBP 1,000). Digital wallet contribution was GBP 250 (+150.0%), so total earnings combine commission and wallet income."
+      ],
+      "kpis": [],
+      "tables": []
+    },
+    {
+      "id": "risks-dependencies",
+      "kind": "risks-dependencies",
+      "title": "Risks & Dependencies",
+      "subtitle": "",
+      "bullets": [],
+      "kpis": [],
+      "tables": [
+        {
+          "title": "Risks & Dependencies",
+          "columns": [
+            "Risk / rationale"
+          ],
+          "colW": [
+            12.5
+          ],
+          "rows": [
+            [
+              "Performance variance risk. 1 brand-new programs were activated, contributing £0 in combined OV. Action: Prioritise higher-basket placements or bundles with the affected programs, then track order value and conversion mix before adding more low-value volume."
+            ],
+            [
+              "Traffic decline. Conversion Rate Movement: Conversion rate increased +25.0% (4.0% to 5.0%). Conversions increased +25.0% (25), showing how efficiently programs converted traffic into outcomes. Action: Audit the affected program's landing path, voucher validity, and tracking parameters, then retest with one high-intent placement before increasing traffic."
+            ],
+            [
+              "Conversion quality dependency. Conversion Volume: Total conversions increased +25.0% (25). Largest declining program contribution requires confirmation from mover tables. Action: Protect the leading program's placement while adding two similar programs into the next campaign rotation so commission is not dependent on one partner."
+            ],
+            [
+              "Order value mix volatility. Order Value: Total order value increased +25.0% (GBP 10,000 to GBP 12,500). Value generation moved alongside conversion volume and earnings performance. Action: Prioritise higher-basket placements or bundles with the affected programs, then track order value and conversion mix before adding more low-value volume."
+            ]
+          ],
+          "dense": false
+        }
+      ]
+    },
+    {
+      "id": "thank-you",
+      "kind": "thank-you",
+      "title": "Topcashback - Thank you.",
+      "subtitle": "",
+      "bullets": [],
+      "kpis": [],
+      "tables": []
+    }
+  ]
+}

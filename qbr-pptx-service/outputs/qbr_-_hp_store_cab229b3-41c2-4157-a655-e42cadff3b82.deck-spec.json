@@ -1,0 +1,642 @@
+{
+  "metadata": {
+    "requestId": "qbr-1779186607330",
+    "client": "HP Store",
+    "deckTitle": "QBR - HP Store",
+    "reportingPeriod": "2025-12-01 to 2026-03-25",
+    "comparisonPeriod": "2024-12-01 to 2025-03-25",
+    "languageCode": "EN",
+    "languageName": "English",
+    "locale": "en-GB",
+    "uiLabels": {
+      "qbrReport": "QBR Report",
+      "anyQuestions": "Any Questions?",
+      "thankYouSubtitleTemplate": "TD Publisher Performance Review - {period}",
+      "currentPeriod": "Current Period",
+      "comparisonPeriodYoy": "Comparison Period (YoY)",
+      "basisYoy": "Basis: Year-over-Year (YoY)",
+      "publisherActivityBySegment": "Publisher Activity by Segment",
+      "keyObservations": "Key Observations",
+      "reportingPeriodPrefix": "Reporting Period",
+      "dataAsOfPrefix": "Data as of",
+      "comparisonPeriodPrefix": "Comparison Period",
+      "allFiguresStatement": "All figures are reported in {currency} unless otherwise stated. YoY variance is calculated as Current Period vs Comparison Period.",
+      "analysisTagSuffix": "Analysis",
+      "segmentSignalUnavailable": "Segment signal not available.",
+      "detailedMovementUnavailable": "Detailed movement not available from this extract.",
+      "kpiSignalGeneric": "KPI Signal",
+      "kpiDriverUnavailable": "Driver not confirmed from available KPI data.",
+      "kpiDetailUnavailable": "Detail not available from current extract.",
+      "kpiTitleConversionRateImprovement": "Conversion Rate Improvement",
+      "kpiTitleSalesVolumePressure": "Sales Volume Pressure",
+      "kpiTitleAovGrowthOffset": "AOV Growth Partially Offsetting Volume Decline",
+      "kpiTitleRisingCpa": "Rising CPA",
+      "kpiTitleRoiTrend": "ROI Trend"
+    },
+    "currencyCode": "GBP",
+    "qbrFocus": "Increase sales",
+    "analysisProgramIds": [
+      "12345",
+      "23456",
+      "34567"
+    ],
+    "generatedAt": "2026-05-19T10:30:07.338Z"
+  },
+  "theme": {
+    "id": "td-default",
+    "name": "TD",
+    "companyName": "Tradedoubler",
+    "logoText": "Tradedoubler",
+    "fonts": {
+      "heading": "Aptos",
+      "body": "Aptos",
+      "mono": "Aptos"
+    },
+    "colors": {
+      "ink": "#2F333B",
+      "paper": "#F3F4F6",
+      "canvas": "#E8EDF9",
+      "accent": "#2F6FF2",
+      "accentAlt": "#EB5757",
+      "success": "#57A66C",
+      "warning": "#F2C94C",
+      "highlight": "#AFC4F5",
+      "muted": "#5B6372",
+      "border": "#D8DCE5"
+    }
+  },
+  "slides": [
+    {
+      "id": "cover",
+      "kind": "cover",
+      "title": "HP Store Performance Review",
+      "subtitle": "",
+      "headline": "Conversion efficiency improved despite softer volume",
+      "summary": "A focused year-over-year review of HP Store publisher performance, conversion dynamics, earnings and strategic priorities to drive growth and optimise outcomes.",
+      "bullets": [
+        "Client: HP Store",
+        "Reporting currency: GBP",
+        "Language: English"
+      ],
+      "kpis": [],
+      "tables": []
+    },
+    {
+      "id": "reporting-period",
+      "kind": "reporting-period",
+      "title": "Reporting Period",
+      "subtitle": "",
+      "headline": "",
+      "summary": "",
+      "bullets": [
+        "2025-12-01 to 2026-03-25"
+      ],
+      "kpis": [],
+      "tables": [],
+      "callout": ""
+    },
+    {
+      "id": "executive-summary",
+      "kind": "program-executive-summary",
+      "title": "Program Performance: Executive Summary",
+      "headline": "",
+      "summary": "Across all programs connected to HP Store, performance was mixed in Dec 2025 – Mar 2026. Conversions moved -12.0% to 54,562 and conversion rate moved +9.6% to 0.13%. Publisher commission decreased -3.5% to £903,086, while digital wallet earnings changed N/A to -. Total earnings ended at £903,086 (-3.5%) and total order value decreased -2.2% to £24,076,021.",
+      "bullets": [],
+      "kpis": [
+        {
+          "label": "Conversions",
+          "value": "54,562",
+          "previous": "61,984",
+          "summary": "54,562 vs 61,984 PY -12.0%",
+          "delta": "-12.0%",
+          "trend": "down",
+          "icon": "☰",
+          "iconPath": ""
+        },
+        {
+          "label": "Total Order Value",
+          "value": "£24,076,021",
+          "previous": "£24,608,446",
+          "summary": "£24,076,021 vs £24,608,446 PY -2.2%",
+          "delta": "-2.2%",
+          "trend": "down",
+          "icon": "▤",
+          "iconPath": ""
+        },
+        {
+          "label": "Publisher Commission",
+          "value": "£903,086",
+          "previous": "£935,460",
+          "summary": "£903,086 vs £935,460 PY -3.5%",
+          "delta": "-3.5%",
+          "trend": "down",
+          "icon": "£",
+          "iconPath": ""
+        },
+        {
+          "label": "Total Earnings",
+          "value": "£903,086",
+          "previous": "£935,460",
+          "summary": "£903,086 vs £935,460 PY -3.5%",
+          "delta": "-3.5%",
+          "trend": "down",
+          "icon": "£",
+          "iconPath": ""
+        },
+        {
+          "label": "Conversion Rate",
+          "value": "0.13%",
+          "previous": "0.12%",
+          "summary": "0.13% vs 0.12% PY +9.6%",
+          "delta": "+9.6%",
+          "trend": "up",
+          "icon": "⚡",
+          "iconPath": ""
+        }
+      ],
+      "tables": []
+    },
+    {
+      "id": "kpi-volume-conversion",
+      "kind": "kpi-table",
+      "title": "KPI Summary Table: Conversions & Earnings",
+      "subtitle": "Unified KPI breakdown vs prior year.",
+      "bullets": [],
+      "kpis": [],
+      "tables": [
+        {
+          "title": "KPI Summary",
+          "columns": [
+            "Metric",
+            "Recent",
+            "Previous",
+            "Difference",
+            "% Variance"
+          ],
+          "rows": [
+            [
+              "Conversions",
+              "54,562",
+              "61,984",
+              "-7,422",
+              "-12.0%"
+            ],
+            [
+              "Conversion Rate",
+              "0.13%",
+              "0.12%",
+              "+0.01%",
+              "+9.6%"
+            ],
+            [
+              "Clicks",
+              "42,050,161",
+              "52,364,355",
+              "-10,314,194",
+              "-19.7%"
+            ],
+            [
+              "Earnings per Conversion",
+              "£16.55",
+              "£15.09",
+              "+£1.46",
+              "+9.7%"
+            ],
+            [
+              "Total Order Value",
+              "£24,076,021",
+              "£24,608,446",
+              "-£532,425",
+              "-2.2%"
+            ],
+            [
+              "Publisher Commission",
+              "£903,086",
+              "£935,460",
+              "-£32,374",
+              "-3.5%"
+            ],
+            [
+              "Total Earnings",
+              "£903,086",
+              "£935,460",
+              "-£32,374",
+              "-3.5%"
+            ]
+          ],
+          "colAlign": [
+            "left",
+            "center",
+            "center",
+            "center",
+            "center"
+          ],
+          "dense": false
+        }
+      ],
+      "footerNote": "Total earnings = Publisher Commission + Digital Wallet. Conversion rate uses the source API's conversion-rate basis."
+    },
+    {
+      "id": "program-activation-snapshot",
+      "kind": "program-activation-snapshot",
+      "title": "Program Activation Snapshot",
+      "subtitle": "",
+      "bullets": [],
+      "kpis": [],
+      "tables": [],
+      "activationSnapshot": [
+        {
+          "label": "Joined programs",
+          "total": "-",
+          "newCount": "-",
+          "newPercent": "-"
+        },
+        {
+          "label": "With clicks",
+          "total": "-",
+          "newCount": "-",
+          "newPercent": "-"
+        },
+        {
+          "label": "Pub commission",
+          "total": "-",
+          "newCount": "-",
+          "newPercent": "-"
+        },
+        {
+          "label": "Inactive",
+          "total": "-",
+          "newCount": "-",
+          "newPercent": "-"
+        }
+      ],
+      "summary": "A clean status view for newly joined primary-publisher programs, placed directly after the KPI summary."
+    },
+    {
+      "id": "kpi-cost-roi",
+      "kind": "program-breakdown",
+      "title": "Program-Level Analysis: Publisher Commission",
+      "subtitle": "Per-program view ordered by publisher commission.",
+      "bullets": [],
+      "kpis": [],
+      "tables": [
+        {
+          "title": "Program-Level Breakdown",
+          "columns": [
+            "Program ID",
+            "Program Name",
+            "Publisher Commission",
+            "Digital Wallet",
+            "Total Earnings",
+            "Conversions",
+            "Order Value",
+            "Publisher Commission YoY %",
+            "Earnings YoY %",
+            "Conversions YoY %"
+          ],
+          "rows": [
+            [
+              "23456",
+              "HP Store Germany",
+              "-",
+              "-",
+              "-",
+              "19,084",
+              "€8,904,115",
+              "-",
+              "-",
+              "-13.4%"
+            ],
+            [
+              "34567",
+              "HP Store Netherlands",
+              "-",
+              "-",
+              "-",
+              "7,067",
+              "€2,627,705",
+              "-",
+              "-",
+              "-2.1%"
+            ],
+            [
+              "12345",
+              "HP Store UK",
+              "-",
+              "-",
+              "-",
+              "28,411",
+              "£12,544,201",
+              "-",
+              "-",
+              "-10.2%"
+            ]
+          ],
+          "dense": false
+        }
+      ]
+    },
+    {
+      "id": "movers-shakers-publisher-commission",
+      "kind": "movers-bar-chart",
+      "title": "Movers & Shakers: Publisher Commission",
+      "subtitle": "Top 10 positive and top 10 negative period-on-period publisher commission changes.",
+      "bullets": [],
+      "kpis": [],
+      "tables": [],
+      "chart": {
+        "type": "movers-commission-bar",
+        "title": "Partners with most change in publisher commission period-on-period",
+        "rows": [
+          {
+            "label": "No qualifying program movement",
+            "value": 0,
+            "display": "-",
+            "pct": "",
+            "direction": "flat"
+          }
+        ]
+      }
+    },
+    {
+      "id": "brand-new-publishers",
+      "kind": "publisher-table",
+      "title": "Top 10 New Programs",
+      "subtitle": "Programs joined or first active for the primary publisher in the current period.",
+      "bullets": [],
+      "kpis": [],
+      "tables": [
+        {
+          "title": "Top 10 New Programs",
+          "columns": [
+            "Program ID",
+            "Program Name",
+            "Conversions",
+            "Order Value",
+            "Publisher Commission",
+            "Digital Wallet",
+            "Total Earnings"
+          ],
+          "rows": [
+            [
+              "-",
+              "-",
+              "-",
+              "-",
+              "-",
+              "-",
+              "-"
+            ]
+          ],
+          "dense": false
+        }
+      ],
+      "callout": "New programs are included where current-period activity exists and no prior-period baseline was found."
+    },
+    {
+      "id": "competitor-analysis",
+      "kind": "competitor-analysis",
+      "title": "Competitor Analysis",
+      "subtitle": "Anonymous comparison of publisher commission coverage and white-space programmes.",
+      "bullets": [],
+      "kpis": [],
+      "tables": [
+        {
+          "title": "Competitor Group Summary",
+          "columns": [
+            "Competitor Group Summary",
+            "Your Site",
+            "Publisher 1",
+            "Publisher 2",
+            "Publisher 3",
+            "Publisher 4",
+            "Distinct comp. prog. #"
+          ],
+          "rows": [
+            [
+              "-",
+              "-",
+              "-",
+              "-",
+              "-",
+              "-",
+              "-"
+            ]
+          ]
+        }
+      ],
+      "chart": null,
+      "callout": "Pub Comm of the above is calculated only for programmes where the primary publisher has 0 publisher commission."
+    },
+    {
+      "id": "competitor-share-pub-comm",
+      "kind": "competitor-share-bar-chart",
+      "title": "Share Within Competitor Group",
+      "subtitle": "Publisher commission share for the primary publisher and four comparison publishers.",
+      "bullets": [],
+      "kpis": [],
+      "tables": [],
+      "chart": {
+        "type": "competitor-share-pub-comm",
+        "title": "Share of publisher commission within competitor group",
+        "categories": [
+          "Your Site",
+          "Comp. A",
+          "Comp. B",
+          "Comp. C",
+          "Comp. D"
+        ],
+        "series": []
+      }
+    },
+    {
+      "id": "top-programs-competitor-performance",
+      "kind": "competitor-performance-table",
+      "title": "Top Programs Competitor Performance",
+      "subtitle": "Share of publisher commission by program across the primary publisher and four comparison publishers.",
+      "bullets": [],
+      "kpis": [],
+      "tables": [
+        {
+          "title": "Top Programs Competitor Performance",
+          "columns": [
+            "Program Name",
+            "Primary Publisher",
+            "Comp. A",
+            "Comp. B",
+            "Comp. C",
+            "Comp. D"
+          ],
+          "rows": [
+            [
+              "-",
+              "-",
+              "-",
+              "-",
+              "-",
+              "-"
+            ]
+          ],
+          "colAlign": [
+            "left",
+            "center",
+            "center",
+            "center",
+            "center",
+            "center"
+          ],
+          "colW": [
+            3.9,
+            1.65,
+            1.35,
+            1.35,
+            1.35,
+            1.35
+          ],
+          "primaryHighlightColumn": 1,
+          "dense": true
+        }
+      ]
+    },
+    {
+      "id": "kpi-highlights",
+      "kind": "insights-blue",
+      "title": "KPI Highlights & Business Implications",
+      "subtitle": "What the numbers mean for the business - key signals and context.",
+      "bullets": [
+        "Conversion Rate Movement: Conversion rate increased +9.6% (0.12% to 0.13%). Conversions decreased -12.0% (-7,422), showing how efficiently programs converted traffic into outcomes.",
+        "Conversion Volume: Total conversions decreased -12.0% (-7,422). Largest declining programs were VoucherCodes (-14.4%).",
+        "Order Value: Total order value decreased -2.2% (£24,608,446 to £24,076,021). Value generation moved alongside conversion volume and earnings performance.",
+        "Publisher Commission: Publisher commission decreased -3.5% (£935,460 to £903,086). Commission remains the core earning component for the program.",
+        "Total Earnings: Total earnings decreased -3.5% (£935,460 to £903,086). Digital wallet contribution was - (N/A), so total earnings combine commission and wallet income."
+      ],
+      "kpis": [],
+      "tables": []
+    },
+    {
+      "id": "risks-dependencies",
+      "kind": "risks-dependencies",
+      "title": "Risks & Dependencies",
+      "subtitle": "",
+      "bullets": [],
+      "kpis": [],
+      "tables": [
+        {
+          "title": "Risks & Dependencies",
+          "columns": [
+            "Risk / rationale"
+          ],
+          "colW": [
+            12.5
+          ],
+          "rows": [
+            [
+              "Order value mix volatility. Skimlinks was the strongest YoY uplift program (Content), adding +£590,200 in OV (+18.3%)."
+            ],
+            [
+              "Order value mix volatility. VoucherCodes was the largest declining program (Voucher), with OV movement -£780,112 (-14.2%)."
+            ],
+            [
+              "Program concentration risk. Program concentration remains high: VoucherCodes and Skimlinks account for £8,551,310 (64.7% of programme OV)."
+            ]
+          ],
+          "dense": false
+        }
+      ]
+    },
+    {
+      "id": "thank-you",
+      "kind": "thank-you",
+      "title": "HP Store - Thank you.",
+      "subtitle": "",
+      "bullets": [],
+      "kpis": [],
+      "tables": []
+    },
+    {
+      "id": "appendix-program-yoy",
+      "kind": "appendix",
+      "title": "Appendix: Program YoY Table",
+      "bullets": [],
+      "kpis": [],
+      "tables": [
+        {
+          "title": "Program YoY Table",
+          "columns": [
+            "Metric",
+            "Current",
+            "Previous",
+            "Difference",
+            "Variance"
+          ],
+          "rows": [
+            [
+              "Clicks",
+              "42,050,161",
+              "52,364,355",
+              "-10,314,194",
+              "-19.7%"
+            ],
+            [
+              "Sales",
+              "54,562",
+              "61,984",
+              "-7,422",
+              "-12.0%"
+            ],
+            [
+              "Conv Rate",
+              "0.13%",
+              "0.12%",
+              "+0.01%",
+              "+9.6%"
+            ],
+            [
+              "Order value",
+              "£24,076,021",
+              "£24,608,446",
+              "-£532,425",
+              "-2.2%"
+            ],
+            [
+              "AOV",
+              "£441.26",
+              "£397.01",
+              "+£44.25",
+              "+11.1%"
+            ],
+            [
+              "Publ Commission",
+              "£903,086",
+              "£935,460",
+              "-£32,374",
+              "-3.5%"
+            ],
+            [
+              "Total Commission",
+              "£903,086",
+              "£935,460",
+              "-£32,374",
+              "-3.5%"
+            ],
+            [
+              "CPA",
+              "£16.55",
+              "£15.09",
+              "+£1.46",
+              "+9.7%"
+            ],
+            [
+              "ROI",
+              "26.66",
+              "26.31",
+              "+0.35",
+              "+1.3%"
+            ]
+          ],
+          "dense": true
+        }
+      ]
+    }
+  ]
+}
