@@ -3,6 +3,8 @@ node_modules/
 .venv/
 __pycache__/
 *.pyc
+ai-agent-agenthub/
+qbr-pptx-service/
 
 # Environment files
 .env
