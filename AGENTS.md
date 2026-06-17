@@ -11,6 +11,8 @@ Do not read, modify, stage, commit, or use these paths as part of Publisher QBR 
 
 Those paths belong to separate Advertiser QBR / Agentic RAG Masterclass work and must not be used as fallback context for this repository.
 
+The external folder `C:\Users\harcol\Workflows\qbr-pptx-service` may be inspected only as read-only reference material for design patterns when the user explicitly asks for that context. Never modify files in that folder, copy implementation into Publisher QBR, stage it, or commit it from this repository.
+
 If Git commands fail because `.git` metadata is missing or unexpected, stop and report the state instead of operating on a nested project.
 
 ## Workflow

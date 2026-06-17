@@ -14,7 +14,9 @@ The current application is split into:
 
 This repository is for Publisher QBR only.
 
-Do not add, edit, stage, or commit Advertiser QBR, Agentic RAG Masterclass, or unrelated service code in this repository. In particular, `qbr-pptx-service/` is not part of this Publisher QBR repo and should live in its own correct workflow/repository instead.
+Do not add, edit, stage, or commit Advertiser QBR, Agentic RAG Masterclass, or unrelated service code in this repository. In particular, `qbr-pptx-service/` is not part of this Publisher QBR repo.
+
+The external folder `C:\Users\harcol\Workflows\qbr-pptx-service` may be used as read-only reference material for design patterns, but it must never be modified, staged, or committed from this repository.
 
 If a local folder named `ai-agent-agenthub/` exists inside this workspace, treat it as a separate project. Do not read from it, modify it, stage it, or use it as a fallback Git repository.
 

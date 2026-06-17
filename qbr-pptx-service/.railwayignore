@@ -1,6 +1,0 @@
-node_modules
-outputs
-*.log
-tmp-server-*.log
-.env
-.env.*
