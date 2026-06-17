@@ -13,12 +13,14 @@ Those paths belong to separate Advertiser QBR / Agentic RAG Masterclass work and
 
 The external folder `C:\Users\harcol\Workflows\qbr-pptx-service` may be inspected only as read-only reference material for design patterns when the user explicitly asks for that context. Never modify files in that folder, copy implementation into Publisher QBR, stage it, or commit it from this repository.
 
+`publisher-qbr-service/` is part of this repository. It is the required Publisher QBR PowerPoint generation service and must not be removed during cleanup.
+
 If Git commands fail because `.git` metadata is missing or unexpected, stop and report the state instead of operating on a nested project.
 
 ## Workflow
 
 - Keep changes scoped to Publisher QBR.
-- Prefer existing project patterns in `backend/`, `frontend/`, `n8n-sync/`, and `scripts/`.
+- Prefer existing project patterns in `backend/`, `frontend/`, `n8n-sync/`, `publisher-qbr-service/`, and `scripts/`.
 - Before deleting or resetting anything, create a backup branch or confirm that the work is already safely committed.
 - For JavaScript, TypeScript, React, and app changes, run the relevant build or test command before finishing when practical.
 - For n8n workflow edits, use the `n8nac-skills` schema and validation workflow before changing node JSON.
