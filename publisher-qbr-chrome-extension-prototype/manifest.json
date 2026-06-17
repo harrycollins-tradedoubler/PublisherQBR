@@ -1,0 +1,18 @@
+{
+  "manifest_version": 3,
+  "name": "Publisher QBR Builder",
+  "version": "0.1.0",
+  "description": "Chrome extension UI for submitting Publisher QBR generation requests.",
+  "permissions": ["storage", "tabs"],
+  "host_permissions": [
+    "http://localhost/*",
+    "http://127.0.0.1/*",
+    "https://*/*"
+  ],
+  "background": {
+    "service_worker": "background.js"
+  },
+  "action": {
+    "default_title": "Publisher QBR Builder"
+  }
+}
