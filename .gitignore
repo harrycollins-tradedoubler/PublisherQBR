@@ -1,4 +1,4 @@
-# Dependencies
+﻿# Dependencies
 node_modules/
 .venv/
 __pycache__/
@@ -41,3 +41,7 @@ htmlcov/
 tmp/
 temp/
 *.tmp
+
+# Publisher QBR generated artifacts
+publisher-qbr-chrome-extension-prototype.zip
+publisher-qbr-local-runner/debug-runs/

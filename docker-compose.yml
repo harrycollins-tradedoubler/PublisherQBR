@@ -1,0 +1,35 @@
+﻿services:
+  backend:
+    build:
+      context: .
+      target: backend
+    image: publisher-qbr-backend:local
+    env_file:
+      - ./backend/.env
+    environment:
+      PORT: 8008
+    ports:
+      - "127.0.0.1:8009:8008"
+
+  publisher-qbr-local-runner:
+    build:
+      context: .
+      target: publisher-qbr-local-runner
+    image: publisher-qbr-local-runner:local
+    environment:
+      NODE_ENV: production
+      PORT: 3020
+      PUBLISHER_QBR_LOCAL_RUNNER_HOST: 0.0.0.0
+      PUBLISHER_QBR_ALLOW_REMOTE_LOCAL_WEBHOOK: "1"
+      PUBLISHER_QBR_PPTX_SERVICE_URL: ${PUBLISHER_QBR_PPTX_SERVICE_URL:-http://host.docker.internal:3010}
+      QBR_PPTX_SERVICE_URL: ${QBR_PPTX_SERVICE_URL:-http://host.docker.internal:3010}
+      PUBLISHER_QBR_API_KEY: ${PUBLISHER_QBR_API_KEY:-td-publisher-qbr-local-2026-secret}
+      QBR_PPTX_API_KEY: ${QBR_PPTX_API_KEY:-}
+      API_KEY: ${API_KEY:-}
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+      PUBLISHER_QBR_AGENT_MODE: ${PUBLISHER_QBR_AGENT_MODE:-deterministic}
+      PUBLISHER_QBR_DEBUG_DIR: /app/publisher-qbr-local-runner/debug-runs
+    ports:
+      - "127.0.0.1:${PUBLISHER_QBR_LOCAL_RUNNER_PORT:-3020}:3020"
+    volumes:
+      - ./publisher-qbr-local-runner/debug-runs:/app/publisher-qbr-local-runner/debug-runs

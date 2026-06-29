@@ -35,3 +35,7 @@ async def root():
 @app.get("/health")
 async def health():
     return {"status": "healthy"}
+
+@app.get("/api/health")
+async def api_health():
+    return await health()

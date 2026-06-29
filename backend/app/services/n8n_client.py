@@ -1,9 +1,9 @@
-import httpx
+﻿import httpx
 from typing import Any
 
 
 class N8nClient:
-    """Client for calling n8n workflow webhooks."""
+    """Legacy app-hub compatibility client for retired workflow webhooks."""
 
     def __init__(self, timeout: float = 360.0):
         self.timeout = timeout
@@ -16,16 +16,16 @@ class N8nClient:
         extra_data: dict[str, Any] | None = None,
     ) -> dict[str, Any]:
         """
-        Call an n8n webhook with a message.
+        Call a legacy workflow webhook with a message.
 
         Args:
-            webhook_url: The n8n webhook URL
+            webhook_url: The legacy webhook URL
             message: The user's message
             thread_id: Optional thread ID for conversation context
             extra_data: Optional additional data to send
 
         Returns:
-            The response from the n8n workflow
+            The response from the legacy workflow
         """
         payload = {
             "message": message,
@@ -45,10 +45,12 @@ class N8nClient:
             try:
                 return response.json()
             except ValueError:
-                # Some n8n webhooks return plain text or an empty body on success.
+                # Some legacy webhooks return plain text or an empty body on success.
                 text = response.text.strip()
                 return {"response": text or "Webhook triggered successfully."}
 
 
 # Singleton instance
 n8n_client = N8nClient()
+
+

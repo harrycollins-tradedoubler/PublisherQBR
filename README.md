@@ -1,105 +1,123 @@
-# Publisher QBR
+﻿# Publisher QBR
 
-Publisher QBR is the Tradedoubler workspace for creating and operating the Publisher QBR agent experience.
+Publisher QBR is the local workspace for generating Publisher QBR PowerPoint reports.
 
-The current application is split into:
+The active runtime is:
 
-- `frontend/` - Vite, React, and TypeScript UI for the agent hub and QBR request form.
-- `backend/` - FastAPI service for agent routing, TD auth helpers, QBR job status, and report downloads.
-- `n8n-sync/` - version-controlled n8n workflow JSON used by the Publisher QBR automation.
-- `publisher-qbr-service/` - required Publisher QBR PowerPoint generation service.
-- `publisher-qbr/` - placeholder/project notes for Publisher QBR-specific assets.
-- `scripts/` - local helper scripts for starting and stopping the active backend/frontend services.
+```text
+Chrome extension -> local Publisher QBR runner -> qbr-pptx-service
+```
+
+n8n workflows and Cloudflare tunnels are retired from the active Publisher QBR runtime. They are kept only as historical recovery material under `workflows/archive/`.
+
+## Active Modules
+
+- `publisher-qbr-chrome-extension-prototype/` - active Chrome extension UI. It handles TD admin login, publisher impersonation, request assembly, and submission to the local runner.
+- `publisher-qbr-local-runner/` - active local Node.js workflow runner. It accepts the extension webhook request on `127.0.0.1:3020`, fetches TD data, builds the Publisher QBR payload, and calls the PPTX service.
+- `qbr-pptx-service/` - active adjacent PowerPoint generation service. It receives `/generate` calls from the runner. Treat it as its own service dependency and do not copy its implementation into this repo.
+- `backend/` and `frontend/` - legacy app-hub UI/API modules retained for compatibility and reference. They are not required for the active extension-to-runner workflow.
+- `workflows/archive/` - retired workflow exports retained only for reference/recovery.
+
+`publisher-qbr-service/` and `publisher-qbr-service_donotuse/` are not active runtime services. The old Publisher-local PPTX implementation was retired because it no longer has the current generator code.
 
 ## Repository Boundary
 
-This repository is for Publisher QBR only.
+Treat this folder as the Publisher QBR repository.
 
-Do not add, edit, stage, or commit Advertiser QBR, Agentic RAG Masterclass, or unrelated service code in this repository. In particular, `qbr-pptx-service/` is not part of this Publisher QBR repo.
+Do not use unrelated projects as fallback context. If `ai-agent-agenthub/` exists, leave it alone. `qbr-pptx-service/` is an active adjacent dependency for the local Publisher QBR flow, but it should be modified only when a task explicitly targets that service.
 
-The external folder `C:\Users\harcol\Workflows\qbr-pptx-service` may be used as read-only reference material for design patterns, but it must never be modified, staged, or committed from this repository.
+If Git commands fail because `.git` metadata is missing or unexpected, stop and report the state instead of operating on a nested project.
 
-If a local folder named `ai-agent-agenthub/` exists inside this workspace, treat it as a separate project. Do not read from it, modify it, stage it, or use it as a fallback Git repository.
+## Local Runtime
 
-Do not remove `publisher-qbr-service/`. It is the Publisher QBR presentation service used to generate editable PowerPoint reports and is separate from the advertiser `qbr-pptx-service`.
-
-## Local Development
-
-Backend:
+Start the active PPTX service from `qbr-pptx-service/` first:
 
 ```powershell
-cd backend
-python -m venv .venv
-.\.venv\Scripts\Activate.ps1
-pip install -r requirements.txt
-uvicorn app.main:app --reload
-```
-
-Frontend:
-
-```powershell
-cd frontend
-npm install
-npm run dev
-```
-
-Publisher PowerPoint service:
-
-```powershell
-cd publisher-qbr-service
+cd qbr-pptx-service
 npm install
 npm start
 ```
 
-Default local URLs:
+Expected service endpoints:
 
-- Backend: `http://localhost:8000`
-- Frontend: `http://localhost:5173`
-- Publisher PowerPoint service: `http://localhost:3010`
-
-## Configuration
-
-The backend reads environment variables from `backend/.env`.
-
-Important settings:
-
-- `DATABASE_URL` or Neon API settings for backend persistence.
-- `QBR_AGENT_WEBHOOK_URL` for the Publisher QBR n8n webhook.
-- Tradedoubler URL settings used by the TD auth routes.
-
-Environment files are intentionally ignored by Git.
-
-## Working Safely
-
-Before large cleanup or repo synchronization work:
-
-```powershell
-git status --short --branch
-git branch -vv
+```text
+GET  http://127.0.0.1:3010/health
+POST http://127.0.0.1:3010/generate
 ```
 
-If local work exists, create a backup branch before resetting or cleaning:
+Then start the Publisher runner:
 
 ```powershell
-git switch -c backup/local-work-before-cleanup
-git add -A
-git commit -m "Backup local work before cleanup"
+cd publisher-qbr-local-runner
+npm install
+npm start
 ```
 
-Only use destructive commands such as `git reset --hard` or `git clean -fd` after the work is backed up.
+Expected runner endpoints:
 
-## Checks
+```text
+GET  http://127.0.0.1:3020/health
+POST http://127.0.0.1:3020/webhook-local/publisher-qbr-v5-competitor-weekly-chart-20260505
+```
 
-Frontend checks:
+Load the extension:
+
+1. Open `chrome://extensions`.
+2. Enable Developer mode.
+3. Load unpacked extension from `publisher-qbr-chrome-extension-prototype/`.
+4. Confirm the Publisher QBR webhook URL is the local runner URL above.
+5. Enter TD credentials or an admin bearer token, impersonate the primary publisher, add comparison publishers if needed, and submit.
+
+## Docker Helper
+
+Docker can run the local runner, but it does not run `qbr-pptx-service` from this repo. Start `qbr-pptx-service` separately on the host at `127.0.0.1:3010`, then run:
+
+```powershell
+docker compose up publisher-qbr-local-runner
+```
+
+The compose runner calls the host PPTX service through:
+
+```text
+http://host.docker.internal:3010
+```
+
+## Environment Variables
+
+- `PUBLISHER_QBR_API_KEY` - shared key sent by the runner to `qbr-pptx-service`.
+- `PUBLISHER_QBR_PPTX_SERVICE_URL` or `QBR_PPTX_SERVICE_URL` - PPTX service base URL. Local default: `http://127.0.0.1:3010`.
+- `PUBLISHER_QBR_LOCAL_RUNNER_PORT` - runner port. Default: `3020`.
+- `PUBLISHER_QBR_AGENT_MODE` - set to `deterministic` to skip live model narrative generation.
+- `OPENAI_API_KEY` - optional. Enables live model narrative generation when deterministic mode is not set.
+- `PUBLISHER_QBR_DEBUG_DIR` - optional sanitized runner debug artifact directory.
+
+Backend-only legacy settings such as `QBR_AGENT_WEBHOOK_URL` are retained for the old app-hub compatibility flow and are not required for the active extension workflow.
+
+## Validation
+
+Run the active checks from the repository root:
+
+```powershell
+cd publisher-qbr-local-runner
+npm test
+```
+
+```powershell
+node publisher-qbr-chrome-extension-prototype/tests/background-payload.test.js
+```
+
+Optional compatibility checks:
 
 ```powershell
 cd frontend
 npm run build
 ```
 
-Backend smoke check:
-
 ```powershell
 cd backend
-uvicorn app.main:app --reload
+python -m unittest discover tests
 ```
+
+## Retired Systems
+
+n8n, Cloudflare tunnels, old remote webhook URLs, and the retired Publisher-local PPTX service are not active setup, deployment, routing, or runtime requirements. Old workflow exports live under `workflows/archive/n8n-retired-2026-06/` for reference only.

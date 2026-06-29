@@ -1,6 +1,6 @@
 import type { Agent, Message, OnboardingStatus, OnboardingSearchResult } from './types'
 
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8008'
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8009'
 
 async function readErrorDetail(response: Response, fallback: string): Promise<string> {
   try {
@@ -203,3 +203,4 @@ export async function searchOnboardingPrograms(searchTerm: string): Promise<Onbo
   const data = await response.json()
   return data.results
 }
+

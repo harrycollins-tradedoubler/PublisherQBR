@@ -13,6 +13,7 @@ from fastapi.responses import Response
 from app.routers.agents import AGENTS
 from app.routers.td_auth import get_current_td_tokens
 from app.services.n8n_client import n8n_client
+from app.services.publisher_qbr import build_publisher_qbr_record, save_publisher_qbr_request
 
 router = APIRouter()
 
@@ -153,6 +154,14 @@ async def send_message(request: Request):
             "created_at": datetime.utcnow().isoformat(),
             "thread_id": thread_id,
         }
+        publisher_qbr_record = build_publisher_qbr_record(payload_obj)
+        if publisher_qbr_record:
+            try:
+                QBR_JOBS[job_id]["publisher_qbr_request_id"] = await save_publisher_qbr_request(
+                    publisher_qbr_record
+                )
+            except Exception as exc:
+                QBR_JOBS[job_id]["publisher_qbr_persistence_error"] = str(exc)
         td_tokens = get_current_td_tokens()
         if not td_tokens and isinstance(payload_obj, dict):
             payload_tokens = payload_obj.get("td_tokens") or payload_obj.get("tdTokens")
@@ -274,3 +283,4 @@ async def download_qbr_file(job_id: str):
         media_type="application/vnd.openxmlformats-officedocument.presentationml.presentation",
         headers={"Content-Disposition": f'attachment; filename="{file_name}"'},
     )
+

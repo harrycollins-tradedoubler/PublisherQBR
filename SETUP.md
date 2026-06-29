@@ -1,125 +1,89 @@
-# Agentic RAG Masterclass - Setup Guide
+﻿# Publisher QBR Setup
+
+This setup guide covers the active local Publisher QBR workflow:
+
+```text
+Chrome extension -> local Publisher QBR runner -> qbr-pptx-service
+```
 
 ## Prerequisites
 
-Before starting Module 1, you need to set up these external services:
+- Node.js 22 or newer.
+- Chrome or another Chromium browser that can load unpacked extensions.
+- Access to TD admin credentials or an admin bearer token for publisher impersonation.
+- The adjacent `qbr-pptx-service/` service available locally.
 
-### 1. Supabase (Required)
-Database, authentication, and file storage.
+## 1. Start qbr-pptx-service
 
-1. Go to [supabase.com](https://supabase.com) and create a free account
-2. Create a new project (name it something like "agentic-rag-masterclass")
-3. Wait for the project to provision
-4. Get your credentials from Project Settings > API:
-   - **Project URL** (SUPABASE_URL)
-   - **anon/public key** (SUPABASE_ANON_KEY) - use Legacy keys, not Publishable
-   - **service_role secret** (SUPABASE_SERVICE_ROLE_KEY)
-
-### 2. LangSmith (Required)
-Observability for LLM calls - essential for debugging.
-
-1. Go to [smith.langchain.com](https://smith.langchain.com) and create a free account
-2. Go to Settings > API Keys
-3. Create a new API key (LANGSMITH_API_KEY)
-4. Create a project and note the project name (LANGSMITH_PROJECT)
-
-### 3. OpenAI (Required for Module 1)
-Used for managed RAG demo in Module 1. Optional after Module 2.
-
-1. Go to [platform.openai.com](https://platform.openai.com)
-2. Create an API key (OPENAI_API_KEY)
-3. In the Playground > Storage, create a Vector Store
-4. Note the Vector Store ID (OPENAI_VECTOR_STORE_ID)
-
-### 4. OpenRouter (Optional - Alternative to OpenAI)
-Access multiple models through one API. Useful from Module 2 onwards.
-
-1. Go to [openrouter.ai](https://openrouter.ai)
-2. Create an account and get an API key
-3. Use base URL: `https://openrouter.ai/api/v1`
-
-### 5. LM Studio (Optional - Local Models)
-Run models locally without API costs.
-
-1. Download from [lmstudio.ai](https://lmstudio.ai)
-2. Download models like Qwen3-30B-A3B (mixture of experts)
-3. Start local server (default: `http://localhost:1234/v1`)
-
-### 6. Tavily (Required for Module 7)
-Web search capability for the agent.
-
-1. Go to [tavily.com](https://tavily.com)
-2. Create account and get API key (TAVILY_API_KEY)
-
-### 7. Cohere (Optional for Module 6)
-Cloud reranking service. Alternative: use local reranking models.
-
-1. Go to [cohere.com](https://cohere.com)
-2. Create account and get API key
-
----
-
-## Local Development Setup
-
-### 1. Install Supabase CLI
-```bash
-# Windows (using scoop)
-scoop install supabase
-
-# Or download from: https://supabase.com/docs/guides/cli
+```powershell
+cd qbr-pptx-service
+npm install
+npm start
 ```
 
-### 2. Link Supabase Project
-```bash
-cd agentic-rag-masterclass
-supabase login
-supabase link --project-ref YOUR_PROJECT_ID
+Verify:
+
+```powershell
+curl http://127.0.0.1:3010/health
 ```
 
-### 3. Python Environment (will be created in Module 1)
-- Python 3.10+ required
-- Virtual environment will be created in `backend/.venv`
+The runner sends generated deck payloads to:
 
-### 4. Node.js (will be created in Module 1)
-- Node.js 18+ required
-- Dependencies will be installed in `frontend/node_modules`
-
----
-
-## Environment Variables Template
-
-Create `backend/.env` after Module 1 builds the backend folder:
-
-```env
-# Supabase
-SUPABASE_URL=https://YOUR_PROJECT.supabase.co
-SUPABASE_ANON_KEY=your_anon_key
-SUPABASE_SERVICE_ROLE_KEY=your_service_role_key
-
-# LangSmith
-LANGSMITH_API_KEY=your_langsmith_key
-LANGSMITH_PROJECT=agentic-rag-masterclass
-
-# OpenAI (Module 1)
-OPENAI_API_KEY=your_openai_key
-OPENAI_VECTOR_STORE_ID=vs_xxxxx
-
-# Tavily (Module 7)
-TAVILY_API_KEY=your_tavily_key
-
-# Text-to-SQL (Module 7)
-SQL_READER_DATABASE_URL=postgresql://readonly_user:password@db.xxx.supabase.co:6543/postgres
+```text
+POST http://127.0.0.1:3010/generate
 ```
 
----
+## 2. Start the Publisher QBR runner
 
-## Getting Started
+```powershell
+cd publisher-qbr-local-runner
+npm install
+npm start
+```
 
-1. Open this folder in your IDE (Cursor, VS Code, etc.)
-2. Open a terminal and run `claude` to start Claude Code
-3. Run `/onboard` to orient Claude to the project
-4. Enter plan mode (`Shift+Tab`) and say: "Let's kick off planning for Module 1"
-5. Review and save the plan to `agent-plans/`
-6. Clear session, then run `/build agent-plans/plan-01-module-01-app-shell.md`
+Verify:
 
-Good luck with your build!
+```powershell
+curl http://127.0.0.1:3020/health
+```
+
+Active webhook:
+
+```text
+http://127.0.0.1:3020/webhook-local/publisher-qbr-v5-competitor-weekly-chart-20260505
+```
+
+## 3. Load the Chrome extension
+
+1. Open `chrome://extensions`.
+2. Enable Developer mode.
+3. Load unpacked extension from `publisher-qbr-chrome-extension-prototype/`.
+4. In the extension, use the local runner webhook URL above.
+5. Save TD connection settings.
+6. Impersonate the primary publisher.
+7. Add up to four comparison publishers if needed.
+8. Submit the Publisher QBR request.
+
+The extension stores TD tokens only in the Chrome service worker session and includes them in the request sent to the local runner.
+
+## Environment
+
+Create `.env` from `.env.example` when using Docker helpers or shell-provided defaults:
+
+```powershell
+Copy-Item .env.example .env
+```
+
+Important values:
+
+- `PUBLISHER_QBR_API_KEY`
+- `PUBLISHER_QBR_PPTX_SERVICE_URL`
+- `QBR_PPTX_SERVICE_URL`
+- `PUBLISHER_QBR_LOCAL_RUNNER_PORT`
+- `PUBLISHER_QBR_AGENT_MODE`
+- `OPENAI_API_KEY`
+- `PUBLISHER_QBR_DEBUG_DIR`
+
+## Historical Material
+
+n8n workflows and Cloudflare tunnel instructions are retired. They are not active setup steps. Historical workflow exports are archived under `workflows/archive/n8n-retired-2026-06/`.

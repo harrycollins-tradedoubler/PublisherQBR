@@ -1,4 +1,4 @@
-﻿<!doctype html>
+<!doctype html>
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
@@ -8,157 +8,240 @@
   </head>
   <body>
     <main class="page-shell">
-      <section class="qbr-card">
-        <header class="qbr-header">
+      <section class="app-card">
+        <header class="app-header">
           <div>
-            <h1>Publisher QBR Request</h1>
-            <p>Use TD impersonation auth, choose reporting parameters, and trigger your n8n publisher workflow.</p>
+            <p class="eyebrow">Developer Extension</p>
+            <h1>Publisher QBR Builder</h1>
           </div>
-          <button type="submit" form="qbrForm" id="submitBtn">Send QBR Request</button>
+          <button class="button button-primary" id="submitRequest" type="button">Submit Request</button>
         </header>
 
-        <form id="qbrForm" class="qbr-form">
-          <section class="form-section extension-settings">
-            <h2>Extension API Endpoint</h2>
-            <p class="section-note">Use your local QBR server or Cloudflare-backed QBR API base URL.</p>
-            <label>
-              API Base URL
-              <input id="apiBaseUrl" type="url" placeholder="http://localhost:3000" autocomplete="off" />
-            </label>
-          </section>
+        <div class="content-grid">
+          <form id="publisherForm" class="form-stack">
+            <section class="panel">
+              <div class="panel-heading">
+                <h2>TD Connection</h2>
+                <p>The extension service worker authenticates with TD, impersonates publishers, then sends the QBR request to the local backend.</p>
+              </div>
 
-          <section class="form-section">
-            <h2>1. Postman-Style Auth Input</h2>
-            <p class="section-note">Admin email/password and impersonate endpoint are hardcoded in backend. Enter the primary publisher first.</p>
-            <div class="grid cols-2">
-              <label>
-                Primary Username
-                <input id="clientUsername" name="clientUsername" type="text" placeholder="e.g. johan.goransson@choosy.se" required />
-              </label>
-              <label>
-                Primary sourceID
-                <input id="sourceID" name="sourceID" type="text" placeholder="Optional (leave blank unless needed)" />
-              </label>
-            </div>
-          </section>
-
-          <section class="form-section">
-            <h2>2. Competitor Publishers</h2>
-            <p class="section-note">Optional anonymous comparison publishers. Each completed row impersonates that username and filters to its sourceID.</p>
-            <div class="competitor-grid">
-              <div class="competitor-row">
-                <div class="competitor-label">Publisher 1</div>
-                <label>
-                  Username
-                  <input id="competitor1Username" name="competitor1Username" type="text" placeholder="publisher username" />
+              <div class="form-grid">
+                <label class="field" for="adminUsername">
+                  <span>Admin Username</span>
+                  <input id="adminUsername" name="adminUsername" type="text" autocomplete="username" placeholder="admin.user@example.com" />
                 </label>
-                <label>
-                  sourceID
-                  <input id="competitor1SourceID" name="competitor1SourceID" type="text" placeholder="sourceID" />
+
+                <label class="field" for="adminPassword">
+                  <span>Admin Password</span>
+                  <input id="adminPassword" name="adminPassword" type="password" autocomplete="current-password" placeholder="Required unless a bearer token is supplied" />
+                </label>
+
+                <label class="field field-wide" for="qbrWebhookUrl">
+                  <span>Publisher QBR Webhook URL</span>
+                  <input id="qbrWebhookUrl" name="qbrWebhookUrl" type="url" autocomplete="off" spellcheck="false" />
                 </label>
               </div>
-              <div class="competitor-row">
-                <div class="competitor-label">Publisher 2</div>
-                <label>
-                  Username
-                  <input id="competitor2Username" name="competitor2Username" type="text" placeholder="publisher username" />
+
+              <details>
+                <summary>Advanced TD endpoints</summary>
+                <div class="form-grid advanced-grid">
+                  <label class="field field-wide" for="oauthUrl">
+                    <span>OAuth URL</span>
+                    <input id="oauthUrl" name="oauthUrl" type="text" autocomplete="off" spellcheck="false" />
+                  </label>
+                  <label class="field field-wide" for="impersonateUrl">
+                    <span>Impersonate URL Prefix</span>
+                    <input id="impersonateUrl" name="impersonateUrl" type="text" autocomplete="off" spellcheck="false" />
+                  </label>
+                  <label class="field field-wide" for="oauthBasic">
+                    <span>OAuth Basic</span>
+                    <input id="oauthBasic" name="oauthBasic" type="password" autocomplete="off" spellcheck="false" />
+                  </label>
+                </div>
+              </details>
+
+              <div class="action-row">
+                <button class="button button-secondary" id="saveConnection" type="button">Save Connection</button>
+              </div>
+            </section>
+
+            <section class="panel">
+              <div class="panel-heading">
+                <h2>1. Primary Publisher</h2>
+                <p>Enter the main publisher username and site ID. The extension keeps impersonation tokens in the service worker session.</p>
+              </div>
+
+              <div class="form-grid">
+                <label class="field" for="clientUsername">
+                  <span>Primary Username</span>
+                  <input id="clientUsername" name="clientUsername" type="text" autocomplete="username" placeholder="publisher@example.com" required />
                 </label>
-                <label>
-                  sourceID
-                  <input id="competitor2SourceID" name="competitor2SourceID" type="text" placeholder="sourceID" />
+
+                <label class="field" for="sourceID">
+                  <span>Primary Site ID / sourceID</span>
+                  <input id="sourceID" name="sourceID" type="text" inputmode="numeric" placeholder="123456" required />
+                </label>
+
+                <label class="field field-wide" for="accessToken">
+                  <span>Admin Bearer Token Override</span>
+                  <input id="accessToken" name="accessToken" type="password" autocomplete="off" placeholder="Optional fallback instead of admin username/password" />
                 </label>
               </div>
-              <div class="competitor-row">
-                <div class="competitor-label">Publisher 3</div>
-                <label>
-                  Username
-                  <input id="competitor3Username" name="competitor3Username" type="text" placeholder="publisher username" />
+
+              <div class="action-row">
+                <button class="button button-secondary" id="impersonatePrimary" type="button">Impersonate Primary</button>
+                <button class="button button-ghost" id="clearSession" type="button">Clear Session Fields</button>
+                <span class="inline-status" id="sessionStatus">No publisher impersonated.</span>
+              </div>
+            </section>
+
+            <section class="panel">
+              <div class="panel-heading">
+                <h2>2. Comparison Publishers</h2>
+                <p>Add up to four comparison publishers. Leave a row blank when it is not needed.</p>
+              </div>
+
+              <div class="publisher-grid">
+                <div class="publisher-row">
+                  <div class="publisher-label">Publisher 1</div>
+                  <label class="field" for="competitor1Username">
+                    <span>Username</span>
+                    <input id="competitor1Username" name="competitor1Username" type="text" placeholder="publisher username" />
+                  </label>
+                  <label class="field" for="competitor1SourceID">
+                    <span>Site ID / sourceID</span>
+                    <input id="competitor1SourceID" name="competitor1SourceID" type="text" inputmode="numeric" placeholder="site ID" />
+                  </label>
+                </div>
+
+                <div class="publisher-row">
+                  <div class="publisher-label">Publisher 2</div>
+                  <label class="field" for="competitor2Username">
+                    <span>Username</span>
+                    <input id="competitor2Username" name="competitor2Username" type="text" placeholder="publisher username" />
+                  </label>
+                  <label class="field" for="competitor2SourceID">
+                    <span>Site ID / sourceID</span>
+                    <input id="competitor2SourceID" name="competitor2SourceID" type="text" inputmode="numeric" placeholder="site ID" />
+                  </label>
+                </div>
+
+                <div class="publisher-row">
+                  <div class="publisher-label">Publisher 3</div>
+                  <label class="field" for="competitor3Username">
+                    <span>Username</span>
+                    <input id="competitor3Username" name="competitor3Username" type="text" placeholder="publisher username" />
+                  </label>
+                  <label class="field" for="competitor3SourceID">
+                    <span>Site ID / sourceID</span>
+                    <input id="competitor3SourceID" name="competitor3SourceID" type="text" inputmode="numeric" placeholder="site ID" />
+                  </label>
+                </div>
+
+                <div class="publisher-row">
+                  <div class="publisher-label">Publisher 4</div>
+                  <label class="field" for="competitor4Username">
+                    <span>Username</span>
+                    <input id="competitor4Username" name="competitor4Username" type="text" placeholder="publisher username" />
+                  </label>
+                  <label class="field" for="competitor4SourceID">
+                    <span>Site ID / sourceID</span>
+                    <input id="competitor4SourceID" name="competitor4SourceID" type="text" inputmode="numeric" placeholder="site ID" />
+                  </label>
+                </div>
+              </div>
+            </section>
+
+            <section class="panel">
+              <div class="panel-heading">
+                <h2>3. Output</h2>
+                <p>Select localization and output settings for the Publisher QBR.</p>
+              </div>
+
+              <div class="form-grid">
+                <label class="field" for="languageCode">
+                  <span>Language</span>
+                  <select id="languageCode" name="languageCode" required>
+                    <option value="EN">English</option>
+                    <option value="FR">French</option>
+                    <option value="NL">Dutch</option>
+                    <option value="DE">German</option>
+                    <option value="IT">Italian</option>
+                    <option value="NO">Norwegian</option>
+                    <option value="SV">Swedish</option>
+                    <option value="DA">Danish</option>
+                    <option value="FI">Finnish</option>
+                    <option value="ES">Spanish</option>
+                    <option value="PL">Polish</option>
+                  </select>
                 </label>
-                <label>
-                  sourceID
-                  <input id="competitor3SourceID" name="competitor3SourceID" type="text" placeholder="sourceID" />
+
+                <label class="field" for="currencyCode">
+                  <span>Currency</span>
+                  <select id="currencyCode" name="currencyCode" required>
+                    <option value="EUR">EUR</option>
+                    <option value="GBP">GBP</option>
+                    <option value="USD">USD</option>
+                    <option value="AUD">AUD</option>
+                    <option value="SEK">SEK</option>
+                    <option value="NOK">NOK</option>
+                    <option value="DKK">DKK</option>
+                    <option value="PLN">PLN</option>
+                  </select>
                 </label>
               </div>
-              <div class="competitor-row">
-                <div class="competitor-label">Publisher 4</div>
-                <label>
-                  Username
-                  <input id="competitor4Username" name="competitor4Username" type="text" placeholder="publisher username" />
+            </section>
+
+            <section class="panel">
+              <div class="panel-heading">
+                <h2>4. Reporting Period</h2>
+                <p>Pick the date range that the publisher workflow should analyze.</p>
+              </div>
+
+              <div class="form-grid form-grid-three">
+                <label class="field" for="reportingPeriod">
+                  <span>Preset</span>
+                  <select id="reportingPeriod" name="reportingPeriod" required>
+                    <option value="last_30_days">Last 30 Days</option>
+                    <option value="last_90_days" selected>Last 90 Days</option>
+                    <option value="this_quarter">This Quarter</option>
+                    <option value="last_quarter">Last Quarter</option>
+                    <option value="custom">Custom</option>
+                  </select>
                 </label>
-                <label>
-                  sourceID
-                  <input id="competitor4SourceID" name="competitor4SourceID" type="text" placeholder="sourceID" />
+
+                <label class="field" for="startDate">
+                  <span>Start Date</span>
+                  <input id="startDate" name="startDate" type="date" required />
+                </label>
+
+                <label class="field" for="endDate">
+                  <span>End Date</span>
+                  <input id="endDate" name="endDate" type="date" required />
                 </label>
               </div>
-            </div>
-          </section>
+            </section>
+          </form>
 
-          <section class="form-section">
-            <h2>3. Output & Locale</h2>
-            <div class="grid cols-2">
-              <label>
-                Language
-                <select id="languageCode" name="languageCode" required>
-                  <option value="EN">English</option>
-                  <option value="FR">French</option>
-                  <option value="NL">Dutch</option>
-                  <option value="DE">German</option>
-                  <option value="IT">Italian</option>
-                  <option value="NO">Norwegian</option>
-                  <option value="SV">Swedish</option>
-                  <option value="DA">Danish</option>
-                  <option value="FI">Finnish</option>
-                  <option value="ES">Spanish</option>
-                  <option value="PL">Polish</option>
-                </select>
-              </label>
-              <label>
-                Currency
-                <select id="currencyCode" name="currencyCode" required>
-                  <option value="EUR">EUR</option>
-                  <option value="GBP">GBP</option>
-                  <option value="USD">USD</option>
-                  <option value="AUD">AUD</option>
-                  <option value="SEK">SEK</option>
-                  <option value="NOK">NOK</option>
-                  <option value="DKK">DKK</option>
-                  <option value="PLN">PLN</option>
-                </select>
-              </label>
-            </div>
-          </section>
+          <aside class="side-stack">
+            <section class="panel summary-panel">
+              <div class="panel-heading">
+                <h2>Live Summary</h2>
+                <p>Publisher scope and request details.</p>
+              </div>
+              <dl class="summary-list" id="summaryList"></dl>
+            </section>
 
-          <section class="form-section">
-            <h2>4. Reporting Period</h2>
-            <div class="grid cols-3">
-              <label>
-                Preset
-                <select id="reportingPeriod" name="reportingPeriod" required>
-                  <option value="last_30_days">Last 30 Days</option>
-                  <option value="last_90_days" selected>Last 90 Days</option>
-                  <option value="this_quarter">This Quarter</option>
-                  <option value="last_quarter">Last Quarter</option>
-                  <option value="custom">Custom</option>
-                </select>
-              </label>
-              <label>
-                Start Date
-                <input id="startDate" name="startDate" type="date" required />
-              </label>
-              <label>
-                End Date
-                <input id="endDate" name="endDate" type="date" required />
-              </label>
-            </div>
-          </section>
-
-          <section class="summary" id="summaryPanel"></section>
-        </form>
-      </section>
-
-      <section class="result-card">
-        <h3>Request Status</h3>
-        <pre id="responseOutput">No request yet.</pre>
+            <section class="panel status-panel">
+              <div class="panel-heading">
+                <h2>Request Status</h2>
+                <p>Connection, impersonation, submission, and polling output.</p>
+              </div>
+              <pre id="statusOutput">Ready.</pre>
+              <div class="link-slot" id="resultLink"></div>
+            </section>
+          </aside>
+        </div>
       </section>
     </main>
 

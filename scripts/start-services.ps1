@@ -1,26 +1,25 @@
-# Start all services for the Agentic RAG application
+﻿# Start Publisher QBR legacy app-hub services
 
-Write-Host "Starting Agentic RAG services..." -ForegroundColor Cyan
+Write-Host "Starting Publisher QBR legacy app-hub services..." -ForegroundColor Cyan
+Write-Host "Active QBR generation uses the Chrome extension, local runner on 3020, and qbr-pptx-service on 3010." -ForegroundColor Cyan
 
-# Start backend
 Write-Host "Starting backend server..." -ForegroundColor Yellow
 $backendPath = Join-Path $PSScriptRoot "..\backend"
 if (Test-Path $backendPath) {
-    Start-Process powershell -ArgumentList "-NoExit", "-Command", "cd '$backendPath'; .\.venv\Scripts\Activate.ps1; .\.venv\Scripts\python.exe -m uvicorn app.main:app --reload --host 0.0.0.0 --port 8008"
+    Start-Process powershell -ArgumentList "-NoExit", "-Command", "cd '$backendPath'; .\.venv\Scripts\Activate.ps1; .\.venv\Scripts\python.exe -m uvicorn app.main:app --reload --host 0.0.0.0 --port 8000"
 } else {
-    Write-Host "Backend folder not found. Run Module 1 first." -ForegroundColor Red
+    Write-Host "Backend folder not found." -ForegroundColor Red
 }
 
-# Start frontend
 Write-Host "Starting frontend server..." -ForegroundColor Yellow
 $frontendPath = Join-Path $PSScriptRoot "..\frontend"
 if (Test-Path $frontendPath) {
     Start-Process powershell -ArgumentList "-NoExit", "-Command", "cd '$frontendPath'; npm run dev"
 } else {
-    Write-Host "Frontend folder not found. Run Module 1 first." -ForegroundColor Red
+    Write-Host "Frontend folder not found." -ForegroundColor Red
 }
 
 Write-Host ""
-Write-Host "Services starting..." -ForegroundColor Green
-Write-Host "Backend: http://localhost:8008" -ForegroundColor Cyan
+Write-Host "Legacy app-hub services starting..." -ForegroundColor Green
+Write-Host "Backend: http://localhost:8000" -ForegroundColor Cyan
 Write-Host "Frontend: http://localhost:5173" -ForegroundColor Cyan
